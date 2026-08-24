@@ -585,12 +585,19 @@ body.auth-locked #loginOverlay{pointer-events:auto!important}
 .scope-item-row .sir-sub{font-size:10.5px;color:var(--g500);margin-top:1px}
 .scope-item-row .sir-price{font-weight:700;color:var(--g700);white-space:nowrap;font-size:12.5px;font-family:'JetBrains Mono',monospace}
 
-/* Enmienda — editor de texto enriquecido (negrita + incisos) para Cláusulas/Scope/Otro.
-   Misma tipografía y tamaño que el cuerpo del Word/HTML generado (Times New Roman 11pt,
-   justificado), para que lo que se ve al tipear sea lo mismo que queda en la enmienda. */
-.rte-toolbar{display:flex;gap:4px;margin-bottom:6px}
-.rte-editor{min-height:90px;width:100%;padding:10px 12px;border:1px solid var(--g200);border-radius:8px;background:var(--w);font-family:'Times New Roman',Georgia,serif;font-size:14.5px;line-height:1.5;text-align:justify;outline:none}
-.rte-editor:focus{border-color:var(--p400,#a78bfa);box-shadow:0 0 0 3px rgba(124,58,237,.08)}
+/* Enmienda — editor de texto enriquecido (negrita, cursiva, subrayado, incisos, viñetas,
+   sangría) para Cláusulas/Scope/Otro. Toolbar + área de texto en una sola caja, como un editor
+   WYSIWYG normal. El contenido usa la misma tipografía y tamaño que el Word/HTML generado
+   (Times New Roman 11pt, justificado), para que lo que se ve al tipear sea igual a lo que
+   queda en la enmienda. */
+.rte-box{border:1px solid var(--g200);border-radius:8px;background:var(--w);overflow:hidden}
+.rte-box:focus-within{border-color:var(--p400,#a78bfa);box-shadow:0 0 0 3px rgba(124,58,237,.08)}
+.rte-toolbar{display:flex;align-items:center;gap:2px;padding:6px 8px;background:var(--g50);border-bottom:1px solid var(--g200);flex-wrap:wrap}
+.rte-btn{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 6px;border:1px solid transparent;border-radius:5px;background:transparent;color:var(--g700);font-size:13px;font-family:Arial,sans-serif;cursor:pointer;transition:background .1s,border-color .1s}
+.rte-btn:hover{background:var(--w);border-color:var(--g200)}
+.rte-btn:active{background:var(--g100)}
+.rte-sep{width:1px;height:20px;background:var(--g200);margin:0 4px}
+.rte-editor{min-height:90px;width:100%;padding:10px 12px;border:none;background:var(--w);font-family:'Times New Roman',Georgia,serif;font-size:14.5px;line-height:1.5;text-align:justify;outline:none}
 .rte-editor:empty:before{content:attr(data-placeholder);color:var(--g500);font-style:italic;font-family:Arial,sans-serif;font-size:12.5px}
 .rte-editor p{margin:0 0 8px}
 .rte-editor ol{list-style-type:lower-alpha;margin:4px 0 8px 22px;padding:0}

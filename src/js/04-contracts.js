@@ -930,11 +930,22 @@ function renderDet(){
                 <button type="button" class="btn btn-s btn-sm" style="margin-top:8px" onclick="addScopeNuevoItem()">➕ Agregar item nuevo</button>
               </div>
             </div>
-            <div class="rte-toolbar">
-              <button type="button" class="btn btn-s btn-sm" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','bold')" title="Negrita" style="font-weight:800">B</button>
-              <button type="button" class="btn btn-s btn-sm" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','insertOrderedList')" title="Agregar inciso (a, b, c...)">a) b) c)</button>
+            <div class="rte-box">
+              <div class="rte-toolbar">
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','bold')" title="Negrita (Ctrl+B)"><b>B</b></button>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','italic')" title="Cursiva (Ctrl+I)"><i>I</i></button>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','underline')" title="Subrayado (Ctrl+U)"><u>U</u></button>
+                <span class="rte-sep"></span>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','insertOrderedList')" title="Incisos (a, b, c...)">☰<sub>a</sub></button>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','insertUnorderedList')" title="Viñetas">☰•</button>
+                <span class="rte-sep"></span>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','outdent')" title="Disminuir sangría">⇤</button>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','indent')" title="Aumentar sangría">⇥</button>
+                <span class="rte-sep"></span>
+                <button type="button" class="rte-btn" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','removeFormat')" title="Limpiar formato">✕</button>
+              </div>
+              <div id="ne_mot" class="rte-editor" contenteditable="true" data-placeholder="Descripción detallada de la enmienda..." onfocus="rteSetup()"></div>
             </div>
-            <div id="ne_mot" class="rte-editor" contenteditable="true" data-placeholder="Descripción detallada de la enmienda..." onfocus="rteSetup()"></div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:18px">
@@ -1889,8 +1900,18 @@ function renderScopeQuitarList(){
   // precios se está decidiendo qué sacar (puede no ser la más nueva que existe en el contrato).
   const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
   const perLbl=tab.period?('<div style="font-size:10.5px;color:#b91c1c;font-weight:600;margin-bottom:6px">📅 Tarifario vigente desde '+esc(formatMonth(tab.period))+(asOf?(' — es la versión aplicable al período elegido ('+esc(formatMonth(asOf))+')'):'')+'</div>'):'';
+  // Detalle de diagnóstico: todas las versiones que existen para esta tabla (sin filtrar por
+  // período), para poder confirmar a ojo cuál es la vigente si algo no coincide con lo esperado.
+  const cc0=window.DB.find(x=>x.id===window.detId);
+  const selName=document.getElementById('ne_scope_tabla')?.value||'';
+  const allVersions=cc0?(cc0.tarifarios||[]).filter(t=>String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim()===selName)
+    .slice().sort((a,b)=>String(a.period||'').localeCompare(String(b.period||''))):[];
+  const versionsDbg=allVersions.length>1?('<details style="margin-bottom:8px"><summary style="font-size:10px;color:var(--g500);cursor:pointer">🔍 Ver las '+allVersions.length+' versiones disponibles de este tarifario</summary>'
+    +'<div style="font-size:10.5px;color:var(--g600c);margin-top:4px;padding-left:10px">'
+    +allVersions.map(t=>'<div>· '+esc(t.period||'(sin período)')+(t.enmNum?(' — Enm. N°'+t.enmNum):'')+(t===tab?' <strong>← mostrada acá</strong>':'')+'</div>').join('')
+    +'</div></details>'):'';
   const priceIdx=scopeTablaPriceIdx(tab);
-  wrap.innerHTML=perLbl+tab.rows.map((row,i)=>{
+  wrap.innerHTML=perLbl+versionsDbg+tab.rows.map((row,i)=>{
     // Primer valor no-precio = título de la fila (código/nombre del item); el resto,
     // detalle secundario más chico — evita mostrar todo pegado en una sola línea plana.
     const parts=row.filter((_,ci)=>ci!==priceIdx).map(v=>String(v==null?'':v).trim()).filter(Boolean);
