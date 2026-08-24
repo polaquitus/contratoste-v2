@@ -896,13 +896,38 @@ function renderDet(){
 
           <div id="enm_mot_grp" style="display:none" class="enm-sub">
             <h4 id="enm_mot_lbl">Descripción *</h4>
-            <div id="enm_scope_sub" style="display:none;margin-bottom:10px">
+            <div id="enm_otro_sub" style="display:none;margin-bottom:10px">
               <div class="fgrp">
-                <label>Tipo de cambio de alcance</label>
-                <select id="ne_scope_tipo">
-                  <option value="MAYOR">Mayor scope (incremento de alcance)</option>
-                  <option value="MENOR">Menor scope (reducción de alcance)</option>
-                </select>
+                <label>Título de la sección <span class="req">*</span> <span style="font-weight:400;font-size:10.5px;color:var(--g500)">— reemplaza a "PRECIO" en el punto 2. de la enmienda generada</span></label>
+                <input type="text" id="ne_otro_titulo" placeholder="Ej: SEGUROS, GARANTÍAS, RESPONSABLE DEL CONTRATO...">
+              </div>
+            </div>
+            <div id="enm_scope_sub" style="display:none;margin-bottom:10px">
+              <div class="fg2">
+                <div class="fgrp">
+                  <label>Tipo de cambio de alcance</label>
+                  <select id="ne_scope_tipo">
+                    <option value="MAYOR">Mayor scope (incremento de alcance)</option>
+                    <option value="MENOR">Menor scope (reducción de alcance)</option>
+                  </select>
+                </div>
+                <div class="fgrp">
+                  <label>Período de aplicación <span class="req">*</span></label>
+                  <input type="month" id="ne_scope_periodo">
+                </div>
+              </div>
+              <div class="fgrp" style="margin-top:10px">
+                <label>Tarifario a modificar</label>
+                <select id="ne_scope_tabla" onchange="onScopeTablaChange()"></select>
+              </div>
+              <div style="margin-top:12px">
+                <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.3px">🔻 Quitar items existentes <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— dejan de facturarse a partir del período indicado</span></label>
+                <div id="ne_scope_quitar_wrap" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+              </div>
+              <div style="margin-top:14px">
+                <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.3px">🔺 Agregar items nuevos <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— con su precio, van al tarifario del período indicado</span></label>
+                <div id="ne_scope_nuevos_wrap" style="margin-top:6px;display:flex;flex-direction:column;gap:8px"></div>
+                <button type="button" class="btn btn-s btn-sm" style="margin-top:6px" onclick="addScopeNuevoItem()">➕ Agregar item nuevo</button>
               </div>
             </div>
             <textarea id="ne_mot" placeholder="Descripción detallada de la enmienda..." style="min-height:80px;width:100%"></textarea>
@@ -1412,6 +1437,9 @@ function openEnmPanel(){
   const tarSub=document.getElementById('ne_tar_subtipo');if(tarSub)tarSub.value='POLINOMICA';
   const scopeSub=document.getElementById('ne_scope_tipo');if(scopeSub)scopeSub.value='MAYOR';
   const extSub=document.getElementById('ne_ext_tipo');if(extSub)extSub.value='FIN';
+  const scopePer=document.getElementById('ne_scope_periodo');if(scopePer)scopePer.value='';
+  const otroTit=document.getElementById('ne_otro_titulo');if(otroTit)otroTit.value='';
+  _neScopeNuevos=[];
   if(typeof onEnmTipoChange==='function') onEnmTipoChange();
   panel.scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -1428,9 +1456,10 @@ function closeEnmPanel(){
   const panel = document.getElementById('enmPanel');
   if(panel) panel.classList.remove('vis');
   document.querySelectorAll('.ne_tipo_cb').forEach(cb=>{cb.checked=false;});
-  const ids = ['ne_ffin','ne_mot','ne_aveManual','ne_ext_tipo','ne_tar_subtipo','ne_scope_tipo'];
+  const ids = ['ne_ffin','ne_mot','ne_aveManual','ne_ext_tipo','ne_tar_subtipo','ne_scope_tipo','ne_scope_periodo','ne_otro_titulo'];
   ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const aveSug=document.getElementById('ne_aveSug');if(aveSug)aveSug.style.display='none';
+  _neScopeNuevos=[];
   initTramos();
   if(typeof onEnmTipoChange==='function') onEnmTipoChange();
 }
@@ -1743,12 +1772,86 @@ function onEnmTipoChange(){
   document.getElementById('enm_poly').style.display=tipos.includes('ACTUALIZACION_TARIFAS')?'':'none';
   const scopeSub=document.getElementById('enm_scope_sub');
   if(scopeSub) scopeSub.style.display=tipos.includes('SCOPE')?'':'none';
+  const otroSub=document.getElementById('enm_otro_sub');
+  if(otroSub) otroSub.style.display=tipos.includes('OTRO')?'':'none';
   if(textTipos.length){
     const lbl={'SCOPE':'🔧 alcance','CLAUSULAS':'📋 cláusulas','OTRO':'💬 otro'};
     const lblEl=document.getElementById('enm_mot_lbl');
-    if(lblEl) lblEl.textContent=textTipos.length>1?('Descripción ('+textTipos.map(t=>lbl[t]).join(' + ')+') *'):({'SCOPE':'🔧 Descripción del cambio de alcance *','CLAUSULAS':'📋 Descripción de las cláusulas modificadas *','OTRO':'💬 Descripción *'}[textTipos[0]]);
+    if(lblEl) lblEl.textContent=textTipos.length>1?('Descripción ('+textTipos.map(t=>lbl[t]).join(' + ')+') *'):({'SCOPE':'🔧 Descripción del cambio de alcance *','CLAUSULAS':'📋 Texto de la/s cláusula/s a incorporar *','OTRO':'💬 Descripción *'}[textTipos[0]]);
   }
   if(tipos.includes('ACTUALIZACION_TARIFAS'))initTramos();
+  if(tipos.includes('SCOPE'))renderScopeTablaOptions();
+}
+
+// ── Alcance (SCOPE): agregar/quitar items del tarifario dentro de la misma enmienda ──
+let _neScopeNuevos=[]; // items nuevos a agregar (in-memory mientras el panel está abierto)
+function scopeTablasDisponibles(cc){
+  // Última versión de cada tarifario por nombre (evita listar duplicados de enmiendas previas).
+  const byName={};
+  (cc.tarifarios||[]).forEach(t=>{
+    const baseName=String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim();
+    if(!byName[baseName] || String(t.period||'')>String(byName[baseName].period||'')) byName[baseName]=t;
+  });
+  return Object.keys(byName).map(name=>({name, table:byName[name]}));
+}
+function scopeTablaActual(){
+  const cc=window.DB.find(x=>x.id===window.detId);if(!cc)return null;
+  const sel=document.getElementById('ne_scope_tabla');
+  const name=sel?sel.value:null;
+  if(!name)return null;
+  const found=scopeTablasDisponibles(cc).find(o=>o.name===name);
+  return found?found.table:null;
+}
+function renderScopeTablaOptions(){
+  const cc=window.DB.find(x=>x.id===window.detId);if(!cc)return;
+  const sel=document.getElementById('ne_scope_tabla');if(!sel)return;
+  const opts=scopeTablasDisponibles(cc);
+  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tarifarios cargados —</option>';
+  onScopeTablaChange();
+}
+function onScopeTablaChange(){
+  _neScopeNuevos=[];
+  renderScopeQuitarList();
+  renderScopeNuevosItems();
+}
+function scopeTablaPriceIdx(tab){
+  const cols=tab?(tab.cols||[]):[];
+  let i=cols.findIndex(c=>/precio|valor\s*unitario|tarifa|importe|mensual/i.test(String(c||'')));
+  return i<0?cols.length-1:i;
+}
+function renderScopeQuitarList(){
+  const wrap=document.getElementById('ne_scope_quitar_wrap');if(!wrap)return;
+  const tab=scopeTablaActual();
+  if(!tab||!(tab.rows||[]).length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic">Sin items cargados en este tarifario.</div>'; return; }
+  const priceIdx=scopeTablaPriceIdx(tab);
+  wrap.innerHTML=tab.rows.map((row,i)=>{
+    const label=row.filter((_,ci)=>ci!==priceIdx).map(v=>String(v||'')).filter(Boolean).join(' · ')||('Item '+(i+1));
+    const priceTxt=(row[priceIdx]!=null&&row[priceIdx]!=='')?(' — $'+row[priceIdx]):'';
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="ne_scope_quitar_cb" value="'+i+'"> '+esc(label)+priceTxt+'</label>';
+  }).join('');
+}
+function addScopeNuevoItem(){
+  const tab=scopeTablaActual();
+  const cols=tab?(tab.cols||[]):['ITEM','DESCRIPCION','UNIDAD','PRECIO'];
+  _neScopeNuevos.push(cols.map(()=>''));
+  renderScopeNuevosItems();
+}
+function removeScopeNuevoItem(idx){
+  _neScopeNuevos.splice(idx,1);
+  renderScopeNuevosItems();
+}
+function updScopeNuevoItem(idx,ci,val){
+  if(_neScopeNuevos[idx]) _neScopeNuevos[idx][ci]=val;
+}
+function renderScopeNuevosItems(){
+  const wrap=document.getElementById('ne_scope_nuevos_wrap');if(!wrap)return;
+  const tab=scopeTablaActual();
+  const cols=tab?(tab.cols||[]):['ITEM','DESCRIPCION','UNIDAD','PRECIO'];
+  if(!_neScopeNuevos.length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic">Sin items nuevos agregados.</div>'; return; }
+  wrap.innerHTML=_neScopeNuevos.map((row,ri)=>{
+    const inputs=cols.map((col,ci)=>'<input type="text" placeholder="'+esc(col)+'" value="'+esc(row[ci]||'')+'" oninput="updScopeNuevoItem('+ri+','+ci+',this.value)" style="flex:1;min-width:90px">').join('');
+    return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--g50);padding:6px 8px;border-radius:6px">'+inputs+'<button type="button" class="btn btn-d btn-sm" onclick="removeScopeNuevoItem('+ri+')" style="padding:3px 8px">✕</button></div>';
+  }).join('');
 }
 function onCorrToggle(){
   const on=document.getElementById('ne_isCorr').checked;
@@ -2305,6 +2408,30 @@ async function guardarEnm(){
     motTxt=(document.getElementById('ne_mot')?.value||'').trim();
     if(!motTxt){ toast('Ingresá la descripción', 'er'); return; }
   }
+  let otroTitulo=null;
+  if(tipos.includes('OTRO')){
+    otroTitulo=(document.getElementById('ne_otro_titulo')?.value||'').trim();
+    if(!otroTitulo){ toast('Ingresá el título de la sección para "Otro"', 'er'); return; }
+  }
+  // Alcance (SCOPE): agregar/quitar items del tarifario es opcional — una enmienda de scope
+  // puede ser solo texto (ej: "se amplía el alcance a X sin cambios de tarifario"). El período
+  // y el tarifario a modificar solo son obligatorios si efectivamente hay items marcados para
+  // quitar o agregar; todo item nuevo necesita su precio cargado antes de guardar.
+  let scopeTabla=null, scopePeriodo=null, scopeQuitarIdx=[], scopeNuevosValidos=[];
+  if(tipos.includes('SCOPE')){
+    scopeTabla=scopeTablaActual();
+    scopeQuitarIdx=Array.from(document.querySelectorAll('.ne_scope_quitar_cb:checked')).map(cb=>parseInt(cb.value));
+    scopeNuevosValidos=_neScopeNuevos.filter(row=>row.some(v=>String(v||'').trim()!==''));
+    if(scopeQuitarIdx.length>0 || scopeNuevosValidos.length>0){
+      scopePeriodo=(document.getElementById('ne_scope_periodo')?.value||'').trim();
+      if(!scopePeriodo){ toast('Ingresá el período de aplicación del cambio de alcance', 'er'); return; }
+      if(!scopeTabla){ toast('Seleccioná el tarifario a modificar', 'er'); return; }
+      const priceIdx=scopeTablaPriceIdx(scopeTabla);
+      for(const row of scopeNuevosValidos){
+        if(!String(row[priceIdx]||'').trim()){ toast('Completá el precio de todos los items nuevos antes de guardar', 'er'); return; }
+      }
+    }
+  }
 
   // ── Todo validado: se arma la enmienda y se aplican los efectos, en orden ──
   const num = cc.enmiendas.length + 1;
@@ -2441,6 +2568,22 @@ async function guardarEnm(){
     enm.motivo=motTxt;
     enm.descripcion=motTxt;
     if(tipos.includes('SCOPE')) enm.scopeTipo=document.getElementById('ne_scope_tipo')?.value||'MAYOR';
+    if(tipos.includes('OTRO')) enm.otroTitulo=otroTitulo;
+  }
+  if(tipos.includes('SCOPE') && (scopeQuitarIdx.length>0 || scopeNuevosValidos.length>0)){
+    // Se arma una nueva versión del tarifario para el período indicado: se sacan los items
+    // tildados para quitar y se agregan los nuevos con su precio — mismo patrón de "push" que
+    // usa Actualización de Tarifas, así el resto de la app (Tarifario, generación de Word) lo
+    // toma automáticamente por período sin lógica extra.
+    const baseName=String(scopeTabla.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim();
+    const keptRows=(scopeTabla.rows||[]).filter((_,i)=>!scopeQuitarIdx.includes(i));
+    const newRows=keptRows.concat(scopeNuevosValidos);
+    cc.tarifarios.push({name:baseName+' (Enm.'+num+')', cols:[...(scopeTabla.cols||[])], rows:newRows, period:scopePeriodo, enmNum:num, sourceTableName:baseName});
+    enm.scopePeriodo=scopePeriodo;
+    enm.scopeTablaName=baseName;
+    enm.scopeCols=[...(scopeTabla.cols||[])];
+    enm.scopeItemsRemovidos=scopeQuitarIdx.map(i=>(scopeTabla.rows||[])[i]).filter(Boolean);
+    enm.scopeItemsAgregados=scopeNuevosValidos;
   }
 
   cc.enmiendas.push(enm);

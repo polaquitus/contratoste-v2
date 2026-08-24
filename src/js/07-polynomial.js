@@ -1186,6 +1186,31 @@ function downloadAmendmentDoc(cid, enmNum){
   toast('Documento .doc descargado: '+fname,'ok');
 }
 
+// Tabla(s) de items agregados/quitados del tarifario por una enmienda de Alcance (SCOPE) —
+// se muestra dentro de la sección "ACT. DE ALCANCE" del documento, debajo del texto.
+function renderScopeItemsTable(enm){
+  var cols=enm.scopeCols||[];
+  var agregados=enm.scopeItemsAgregados||[];
+  var removidos=enm.scopeItemsRemovidos||[];
+  if(!cols.length || (!agregados.length && !removidos.length)) return '';
+  var periodoTxt=enm.scopePeriodo?(' a partir de <strong>'+esc(enm.scopePeriodo)+'</strong>'):'';
+  function _tbl(rows){
+    var thead='<tr>'+cols.map(function(c){ return '<th style="background:#1b3f6e;color:#fff;padding:5pt 7pt;font-size:9.5pt;font-weight:700;text-align:left;border:1px solid #1b3f6e">'+esc(String(c||''))+'</th>'; }).join('')+'</tr>';
+    var tbody=rows.map(function(row){
+      return '<tr>'+cols.map(function(c,ci){ return '<td style="padding:4pt 7pt;font-size:9.5pt;border:1px solid #d0d4d9">'+esc(String((row||[])[ci]==null?'':(row||[])[ci]))+'</td>'; }).join('')+'</tr>';
+    }).join('');
+    return '<table style="width:100%;border-collapse:collapse;margin:6pt 0 12pt"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>';
+  }
+  var html='';
+  if(agregados.length){
+    html+='<p style="font-weight:700;font-size:10pt;margin-top:8pt">Items incorporados al tarifario'+periodoTxt+':</p>'+_tbl(agregados);
+  }
+  if(removidos.length){
+    html+='<p style="font-weight:700;font-size:10pt;margin-top:8pt">Items dados de baja del tarifario'+periodoTxt+':</p>'+_tbl(removidos);
+  }
+  return html;
+}
+
 function renderAmendmentHtml(contract, targetEnmNum, opts){
   opts=opts||{};
   var forWord=!!opts.forWord;
@@ -1320,8 +1345,9 @@ function renderAmendmentHtml(contract, targetEnmNum, opts){
     } else if(t==='SCOPE'){
       var descScope=esc(lastEnm.descripcion||lastEnm.motivo||'');
       objetoItems.push('Modificar el alcance del servicio contratado.');
-      sections.push({title:'ALCANCE DEL SERVICIO', body:
-        '<p>'+(descScope||'Se modifica el alcance del servicio contratado, conforme lo detallado en la presente enmienda.')+'</p>'});
+      var scopeItemsHtml=renderScopeItemsTable(lastEnm);
+      sections.push({title:'ACT. DE ALCANCE', body:
+        '<p>'+(descScope||'Se modifica el alcance del servicio contratado, conforme lo detallado en la presente enmienda.')+'</p>'+scopeItemsHtml});
     } else if(t==='CLAUSULAS'){
       var descCl=esc(lastEnm.descripcion||lastEnm.motivo||'');
       objetoItems.push('Modificar y/o incorporar cláusulas de las Condiciones Particulares.');
@@ -1329,8 +1355,9 @@ function renderAmendmentHtml(contract, targetEnmNum, opts){
         '<p>'+(descCl||'Se modifican y/o incorporan cláusulas de las Condiciones Particulares, conforme lo detallado en la presente enmienda.')+'</p>'});
     } else {
       var descOt=esc(lastEnm.descripcion||lastEnm.motivo||'');
+      var otroTitle=esc(lastEnm.otroTitulo||'OTROS');
       objetoItems.push('Modificar las condiciones de la OFERTA según lo detallado a continuación.');
-      sections.push({title:'OTROS', body:
+      sections.push({title:otroTitle, body:
         '<p>'+(descOt||'Se modifican las condiciones de la OFERTA conforme lo detallado en la presente enmienda.')+'</p>'});
     }
   });
