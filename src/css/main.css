@@ -576,3 +576,12 @@ body.auth-locked #loginOverlay{pointer-events:auto!important}
   padding: 24px;
 }
 
+/* Enmienda — Alcance (SCOPE): filas de item de tarifario (quitar/agregar) */
+.scope-item-row{display:flex;align-items:center;gap:10px;background:var(--w);border:1px solid var(--g200);border-radius:8px;padding:8px 10px;cursor:pointer;transition:background .12s,border-color .12s}
+.scope-item-row:hover{background:#fef2f2;border-color:#fecaca}
+.scope-item-row input[type=checkbox]{flex-shrink:0;width:15px;height:15px;accent-color:#dc2626}
+.scope-item-row .sir-main{flex:1;min-width:0}
+.scope-item-row .sir-title{font-weight:700;color:var(--g800);font-size:12px}
+.scope-item-row .sir-sub{font-size:10.5px;color:var(--g500);margin-top:1px}
+.scope-item-row .sir-price{font-weight:700;color:var(--g700);white-space:nowrap;font-size:12.5px;font-family:'JetBrains Mono',monospace}
+

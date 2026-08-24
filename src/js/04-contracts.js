@@ -906,7 +906,7 @@ function renderDet(){
               <div class="fg2">
                 <div class="fgrp">
                   <label>Tipo de cambio de alcance</label>
-                  <select id="ne_scope_tipo">
+                  <select id="ne_scope_tipo" onchange="onScopeTipoChange()">
                     <option value="MAYOR">Mayor scope (incremento de alcance)</option>
                     <option value="MENOR">Menor scope (reducción de alcance)</option>
                   </select>
@@ -920,14 +920,14 @@ function renderDet(){
                 <label>Tarifario a modificar</label>
                 <select id="ne_scope_tabla" onchange="onScopeTablaChange()"></select>
               </div>
-              <div style="margin-top:12px">
-                <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.3px">🔻 Quitar items existentes <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— dejan de facturarse a partir del período indicado</span></label>
-                <div id="ne_scope_quitar_wrap" style="margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
+              <div id="ne_scope_quitar_block" style="margin-top:14px">
+                <label style="font-size:11px;font-weight:600;color:#b91c1c;text-transform:uppercase;letter-spacing:.3px">🔻 Quitar items existentes <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— dejan de facturarse a partir del período indicado</span></label>
+                <div id="ne_scope_quitar_wrap" style="margin-top:8px;display:flex;flex-direction:column;gap:5px;max-height:340px;overflow-y:auto;padding-right:4px"></div>
               </div>
-              <div style="margin-top:14px">
-                <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.3px">🔺 Agregar items nuevos <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— con su precio, van al tarifario del período indicado</span></label>
-                <div id="ne_scope_nuevos_wrap" style="margin-top:6px;display:flex;flex-direction:column;gap:8px"></div>
-                <button type="button" class="btn btn-s btn-sm" style="margin-top:6px" onclick="addScopeNuevoItem()">➕ Agregar item nuevo</button>
+              <div id="ne_scope_nuevos_block" style="margin-top:14px">
+                <label style="font-size:11px;font-weight:600;color:#15803d;text-transform:uppercase;letter-spacing:.3px">🔺 Agregar items nuevos <span style="font-weight:400;font-size:10.5px;color:var(--g500);text-transform:none;letter-spacing:0">— con su precio, van al tarifario del período indicado</span></label>
+                <div id="ne_scope_nuevos_wrap" style="margin-top:8px;display:flex;flex-direction:column;gap:8px"></div>
+                <button type="button" class="btn btn-s btn-sm" style="margin-top:8px" onclick="addScopeNuevoItem()">➕ Agregar item nuevo</button>
               </div>
             </div>
             <textarea id="ne_mot" placeholder="Descripción detallada de la enmienda..." style="min-height:80px;width:100%"></textarea>
@@ -1436,6 +1436,7 @@ function openEnmPanel(){
   // Reset sub-selects
   const tarSub=document.getElementById('ne_tar_subtipo');if(tarSub)tarSub.value='POLINOMICA';
   const scopeSub=document.getElementById('ne_scope_tipo');if(scopeSub)scopeSub.value='MAYOR';
+  onScopeTipoChange();
   const extSub=document.getElementById('ne_ext_tipo');if(extSub)extSub.value='FIN';
   const scopePer=document.getElementById('ne_scope_periodo');if(scopePer)scopePer.value='';
   const otroTit=document.getElementById('ne_otro_titulo');if(otroTit)otroTit.value='';
@@ -1808,11 +1809,21 @@ function renderScopeTablaOptions(){
   const opts=scopeTablasDisponibles(cc);
   sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tarifarios cargados —</option>';
   onScopeTablaChange();
+  onScopeTipoChange();
 }
 function onScopeTablaChange(){
   _neScopeNuevos=[];
   renderScopeQuitarList();
   renderScopeNuevosItems();
+}
+// Menor scope => solo tiene sentido QUITAR items; Mayor scope => solo AGREGAR. Nunca las dos
+// secciones a la vez, para que no se pueda cargar por error una mezcla contradictoria.
+function onScopeTipoChange(){
+  const tipo=document.getElementById('ne_scope_tipo')?.value||'MAYOR';
+  const quitarBlock=document.getElementById('ne_scope_quitar_block');
+  const nuevosBlock=document.getElementById('ne_scope_nuevos_block');
+  if(quitarBlock)quitarBlock.style.display=(tipo==='MENOR')?'':'none';
+  if(nuevosBlock)nuevosBlock.style.display=(tipo==='MAYOR')?'':'none';
 }
 function scopeTablaPriceIdx(tab){
   const cols=tab?(tab.cols||[]):[];
@@ -1822,12 +1833,20 @@ function scopeTablaPriceIdx(tab){
 function renderScopeQuitarList(){
   const wrap=document.getElementById('ne_scope_quitar_wrap');if(!wrap)return;
   const tab=scopeTablaActual();
-  if(!tab||!(tab.rows||[]).length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic">Sin items cargados en este tarifario.</div>'; return; }
+  if(!tab||!(tab.rows||[]).length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic;padding:8px 0">Sin items cargados en este tarifario.</div>'; return; }
   const priceIdx=scopeTablaPriceIdx(tab);
   wrap.innerHTML=tab.rows.map((row,i)=>{
-    const label=row.filter((_,ci)=>ci!==priceIdx).map(v=>String(v||'')).filter(Boolean).join(' · ')||('Item '+(i+1));
-    const priceTxt=(row[priceIdx]!=null&&row[priceIdx]!=='')?(' — $'+row[priceIdx]):'';
-    return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" class="ne_scope_quitar_cb" value="'+i+'"> '+esc(label)+priceTxt+'</label>';
+    // Primer valor no-precio = título de la fila (código/nombre del item); el resto,
+    // detalle secundario más chico — evita mostrar todo pegado en una sola línea plana.
+    const parts=row.filter((_,ci)=>ci!==priceIdx).map(v=>String(v==null?'':v).trim()).filter(Boolean);
+    const main=esc(parts[0]||('Item '+(i+1)));
+    const sub=esc(parts.slice(1).join(' · '));
+    const priceNum=parseFloat(row[priceIdx]);
+    const priceTxt=isFinite(priceNum)?('$ '+fN(priceNum)):'—';
+    return '<label class="scope-item-row"><input type="checkbox" class="ne_scope_quitar_cb" value="'+i+'">'
+      +'<div class="sir-main"><div class="sir-title">'+main+'</div>'+(sub?'<div class="sir-sub">'+sub+'</div>':'')+'</div>'
+      +'<div class="sir-price">'+priceTxt+'</div>'
+    +'</label>';
   }).join('');
 }
 function addScopeNuevoItem(){
@@ -1847,10 +1866,10 @@ function renderScopeNuevosItems(){
   const wrap=document.getElementById('ne_scope_nuevos_wrap');if(!wrap)return;
   const tab=scopeTablaActual();
   const cols=tab?(tab.cols||[]):['ITEM','DESCRIPCION','UNIDAD','PRECIO'];
-  if(!_neScopeNuevos.length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic">Sin items nuevos agregados.</div>'; return; }
+  if(!_neScopeNuevos.length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic;padding:8px 0">Sin items nuevos agregados.</div>'; return; }
   wrap.innerHTML=_neScopeNuevos.map((row,ri)=>{
-    const inputs=cols.map((col,ci)=>'<input type="text" placeholder="'+esc(col)+'" value="'+esc(row[ci]||'')+'" oninput="updScopeNuevoItem('+ri+','+ci+',this.value)" style="flex:1;min-width:90px">').join('');
-    return '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--g50);padding:6px 8px;border-radius:6px">'+inputs+'<button type="button" class="btn btn-d btn-sm" onclick="removeScopeNuevoItem('+ri+')" style="padding:3px 8px">✕</button></div>';
+    const inputs=cols.map((col,ci)=>'<div style="flex:1;min-width:100px"><div style="font-size:9.5px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">'+esc(col||'—')+'</div><input type="text" value="'+esc(row[ci]||'')+'" oninput="updScopeNuevoItem('+ri+','+ci+',this.value)" style="width:100%"></div>').join('');
+    return '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;background:#f0fdf4;border:1px solid #bbf7d0;padding:8px 10px;border-radius:8px">'+inputs+'<button type="button" class="btn btn-d btn-sm" onclick="removeScopeNuevoItem('+ri+')" style="padding:5px 9px">✕</button></div>';
   }).join('');
 }
 function onCorrToggle(){
