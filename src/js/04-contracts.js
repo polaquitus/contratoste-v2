@@ -917,7 +917,7 @@ function renderDet(){
                 </div>
               </div>
               <div class="fgrp" style="margin-top:10px">
-                <label>Tarifario a modificar</label>
+                <label>Tabla a modificar <span style="font-weight:400;font-size:10.5px;color:var(--g500)">— el tarifario del contrato puede tener varias tablas</span></label>
                 <select id="ne_scope_tabla" onchange="onScopeTablaChange()"></select>
               </div>
               <div id="ne_scope_quitar_block" style="margin-top:14px">
@@ -1867,7 +1867,7 @@ function renderScopeTablaOptions(){
   const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
   const opts=scopeTablasDisponibles(cc, asOf||null);
   const prevVal=sel.value;
-  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tarifarios vigentes a ese período —</option>';
+  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tablas vigentes a ese período —</option>';
   if(prevVal && opts.some(o=>o.name===prevVal)) sel.value=prevVal;
   onScopeTablaChange();
   onScopeTipoChange();
@@ -1906,7 +1906,7 @@ function renderScopeQuitarList(){
   const selName=document.getElementById('ne_scope_tabla')?.value||'';
   const allVersions=cc0?(cc0.tarifarios||[]).filter(t=>String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim()===selName)
     .slice().sort((a,b)=>String(a.period||'').localeCompare(String(b.period||''))):[];
-  const versionsDbg=allVersions.length>1?('<details style="margin-bottom:8px"><summary style="font-size:10px;color:var(--g500);cursor:pointer">🔍 Ver las '+allVersions.length+' versiones disponibles de este tarifario</summary>'
+  const versionsDbg=allVersions.length>1?('<details style="margin-bottom:8px"><summary style="font-size:10px;color:var(--g500);cursor:pointer">🔍 Ver las '+allVersions.length+' versiones disponibles de esta tabla</summary>'
     +'<div style="font-size:10.5px;color:var(--g600c);margin-top:4px;padding-left:10px">'
     +allVersions.map(t=>'<div>· '+esc(t.period||'(sin período)')+(t.enmNum?(' — Enm. N°'+t.enmNum):'')+(t===tab?' <strong>← mostrada acá</strong>':'')+'</div>').join('')
     +'</div></details>'):'';
@@ -2522,7 +2522,7 @@ async function guardarEnm(){
     if(scopeQuitarIdx.length>0 || scopeNuevosValidos.length>0){
       scopePeriodo=(document.getElementById('ne_scope_periodo')?.value||'').trim();
       if(!scopePeriodo){ toast('Ingresá el período de aplicación del cambio de alcance', 'er'); return; }
-      if(!scopeTabla){ toast('Seleccioná el tarifario a modificar', 'er'); return; }
+      if(!scopeTabla){ toast('Seleccioná la tabla a modificar', 'er'); return; }
       const priceIdx=scopeTablaPriceIdx(scopeTabla);
       for(const row of scopeNuevosValidos){
         if(!String(row[priceIdx]||'').trim()){ toast('Completá el precio de todos los items nuevos antes de guardar', 'er'); return; }
