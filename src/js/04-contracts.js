@@ -913,7 +913,7 @@ function renderDet(){
                 </div>
                 <div class="fgrp">
                   <label>Período de aplicación <span class="req">*</span></label>
-                  <input type="month" id="ne_scope_periodo">
+                  <input type="month" id="ne_scope_periodo" onchange="renderScopeTablaOptions()">
                 </div>
               </div>
               <div class="fgrp" style="margin-top:10px">
@@ -1827,12 +1827,17 @@ function sanitizeRichText(html){
 
 // ── Alcance (SCOPE): agregar/quitar items del tarifario dentro de la misma enmienda ──
 let _neScopeNuevos=[]; // items nuevos a agregar (in-memory mientras el panel está abierto)
-function scopeTablasDisponibles(cc){
-  // Última versión de cada tarifario por nombre (evita listar duplicados de enmiendas previas).
+function scopeTablasDisponibles(cc, asOfPeriod){
+  // Última versión de cada tarifario por nombre VIGENTE AL PERÍODO indicado (la de period más
+  // alto que no supere asOfPeriod) — si no se pasa período, se usa la más reciente en general.
+  // Ej: si hay versiones ene-26/abr-26/ago-26 y asOfPeriod='2026-06', debe traer la de abr-26
+  // (la vigente en junio), no la de ago-26 aunque sea la más nueva que exista en el contrato.
   const byName={};
   (cc.tarifarios||[]).forEach(t=>{
     const baseName=String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim();
-    if(!byName[baseName] || String(t.period||'')>String(byName[baseName].period||'')) byName[baseName]=t;
+    const per=String(t.period||'');
+    if(asOfPeriod && per>String(asOfPeriod)) return;
+    if(!byName[baseName] || per>String(byName[baseName].period||'')) byName[baseName]=t;
   });
   return Object.keys(byName).map(name=>({name, table:byName[name]}));
 }
@@ -1841,14 +1846,18 @@ function scopeTablaActual(){
   const sel=document.getElementById('ne_scope_tabla');
   const name=sel?sel.value:null;
   if(!name)return null;
-  const found=scopeTablasDisponibles(cc).find(o=>o.name===name);
+  const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
+  const found=scopeTablasDisponibles(cc, asOf||null).find(o=>o.name===name);
   return found?found.table:null;
 }
 function renderScopeTablaOptions(){
   const cc=window.DB.find(x=>x.id===window.detId);if(!cc)return;
   const sel=document.getElementById('ne_scope_tabla');if(!sel)return;
-  const opts=scopeTablasDisponibles(cc);
-  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tarifarios cargados —</option>';
+  const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
+  const opts=scopeTablasDisponibles(cc, asOf||null);
+  const prevVal=sel.value;
+  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tarifarios vigentes a ese período —</option>';
+  if(prevVal && opts.some(o=>o.name===prevVal)) sel.value=prevVal;
   onScopeTablaChange();
   onScopeTipoChange();
 }
@@ -1875,9 +1884,11 @@ function renderScopeQuitarList(){
   const wrap=document.getElementById('ne_scope_quitar_wrap');if(!wrap)return;
   const tab=scopeTablaActual();
   if(!tab||!(tab.rows||[]).length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic;padding:8px 0">Sin items cargados en este tarifario.</div>'; return; }
-  // Muestra siempre la versión más reciente del tarifario elegido — aclarar de qué período es,
-  // para que quede claro con qué precios se está decidiendo qué sacar.
-  const perLbl=tab.period?('<div style="font-size:10.5px;color:#b91c1c;font-weight:600;margin-bottom:6px">📅 Mostrando el tarifario vigente desde '+esc(formatMonth(tab.period))+'</div>'):'';
+  // Muestra la versión del tarifario vigente al "Período de aplicación" elegido (la de period
+  // más alto que no lo supere) — aclarar de qué período es, para que quede claro con qué
+  // precios se está decidiendo qué sacar (puede no ser la más nueva que existe en el contrato).
+  const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
+  const perLbl=tab.period?('<div style="font-size:10.5px;color:#b91c1c;font-weight:600;margin-bottom:6px">📅 Tarifario vigente desde '+esc(formatMonth(tab.period))+(asOf?(' — es la versión aplicable al período elegido ('+esc(formatMonth(asOf))+')'):'')+'</div>'):'';
   const priceIdx=scopeTablaPriceIdx(tab);
   wrap.innerHTML=perLbl+tab.rows.map((row,i)=>{
     // Primer valor no-precio = título de la fila (código/nombre del item); el resto,
