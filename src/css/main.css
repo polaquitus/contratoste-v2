@@ -585,3 +585,15 @@ body.auth-locked #loginOverlay{pointer-events:auto!important}
 .scope-item-row .sir-sub{font-size:10.5px;color:var(--g500);margin-top:1px}
 .scope-item-row .sir-price{font-weight:700;color:var(--g700);white-space:nowrap;font-size:12.5px;font-family:'JetBrains Mono',monospace}
 
+/* Enmienda — editor de texto enriquecido (negrita + incisos) para Cláusulas/Scope/Otro.
+   Misma tipografía y tamaño que el cuerpo del Word/HTML generado (Times New Roman 11pt,
+   justificado), para que lo que se ve al tipear sea lo mismo que queda en la enmienda. */
+.rte-toolbar{display:flex;gap:4px;margin-bottom:6px}
+.rte-editor{min-height:90px;width:100%;padding:10px 12px;border:1px solid var(--g200);border-radius:8px;background:var(--w);font-family:'Times New Roman',Georgia,serif;font-size:14.5px;line-height:1.5;text-align:justify;outline:none}
+.rte-editor:focus{border-color:var(--p400,#a78bfa);box-shadow:0 0 0 3px rgba(124,58,237,.08)}
+.rte-editor:empty:before{content:attr(data-placeholder);color:var(--g500);font-style:italic;font-family:Arial,sans-serif;font-size:12.5px}
+.rte-editor p{margin:0 0 8px}
+.rte-editor ol{list-style-type:lower-alpha;margin:4px 0 8px 22px;padding:0}
+.rte-editor ul{margin:4px 0 8px 22px;padding:0}
+.rte-editor li{margin-bottom:4px}
+

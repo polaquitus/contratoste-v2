@@ -930,7 +930,11 @@ function renderDet(){
                 <button type="button" class="btn btn-s btn-sm" style="margin-top:8px" onclick="addScopeNuevoItem()">➕ Agregar item nuevo</button>
               </div>
             </div>
-            <textarea id="ne_mot" placeholder="Descripción detallada de la enmienda..." style="min-height:80px;width:100%"></textarea>
+            <div class="rte-toolbar">
+              <button type="button" class="btn btn-s btn-sm" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','bold')" title="Negrita" style="font-weight:800">B</button>
+              <button type="button" class="btn btn-s btn-sm" onmousedown="event.preventDefault()" onclick="rteExec('ne_mot','insertOrderedList')" title="Agregar inciso (a, b, c...)">a) b) c)</button>
+            </div>
+            <div id="ne_mot" class="rte-editor" contenteditable="true" data-placeholder="Descripción detallada de la enmienda..." onfocus="rteSetup()"></div>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:18px">
@@ -1457,8 +1461,9 @@ function closeEnmPanel(){
   const panel = document.getElementById('enmPanel');
   if(panel) panel.classList.remove('vis');
   document.querySelectorAll('.ne_tipo_cb').forEach(cb=>{cb.checked=false;});
-  const ids = ['ne_ffin','ne_mot','ne_aveManual','ne_ext_tipo','ne_tar_subtipo','ne_scope_tipo','ne_scope_periodo','ne_otro_titulo'];
+  const ids = ['ne_ffin','ne_aveManual','ne_ext_tipo','ne_tar_subtipo','ne_scope_tipo','ne_scope_periodo','ne_otro_titulo'];
   ids.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const motEl=document.getElementById('ne_mot'); if(motEl) motEl.innerHTML='';
   const aveSug=document.getElementById('ne_aveSug');if(aveSug)aveSug.style.display='none';
   _neScopeNuevos=[];
   initTramos();
@@ -1784,6 +1789,42 @@ function onEnmTipoChange(){
   if(tipos.includes('SCOPE'))renderScopeTablaOptions();
 }
 
+// ── Editor de texto enriquecido (negrita + incisos) para Cláusulas/Scope/Otro ──
+let _rteInit=false;
+function rteSetup(){
+  if(_rteInit)return; _rteInit=true;
+  try{ document.execCommand('defaultParagraphSeparator', false, 'p'); }catch(e){}
+}
+function rteExec(id,cmd){
+  rteSetup();
+  const el=document.getElementById(id); if(!el)return;
+  el.focus();
+  document.execCommand(cmd,false,null);
+}
+// Whitelist de tags — lo que entra acá termina insertado tal cual (sin escapar) en el Word/HTML
+// generado, así que se limita a lo que el toolbar puede producir (negrita, incisos, párrafos).
+function sanitizeRichText(html){
+  const allowed={B:1,STRONG:1,I:1,EM:1,U:1,OL:1,UL:1,LI:1,BR:1,P:1,DIV:1};
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html||'';
+  (function walk(node){
+    Array.from(node.childNodes).forEach(child=>{
+      if(child.nodeType===1){
+        if(!allowed[child.tagName]){
+          while(child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+        } else {
+          Array.from(child.attributes).forEach(a=>child.removeAttribute(a.name));
+          walk(child);
+        }
+      } else if(child.nodeType!==3){
+        node.removeChild(child); // comentarios, etc.
+      }
+    });
+  })(tmp);
+  return tmp.innerHTML;
+}
+
 // ── Alcance (SCOPE): agregar/quitar items del tarifario dentro de la misma enmienda ──
 let _neScopeNuevos=[]; // items nuevos a agregar (in-memory mientras el panel está abierto)
 function scopeTablasDisponibles(cc){
@@ -1834,8 +1875,11 @@ function renderScopeQuitarList(){
   const wrap=document.getElementById('ne_scope_quitar_wrap');if(!wrap)return;
   const tab=scopeTablaActual();
   if(!tab||!(tab.rows||[]).length){ wrap.innerHTML='<div style="font-size:11.5px;color:var(--g500);font-style:italic;padding:8px 0">Sin items cargados en este tarifario.</div>'; return; }
+  // Muestra siempre la versión más reciente del tarifario elegido — aclarar de qué período es,
+  // para que quede claro con qué precios se está decidiendo qué sacar.
+  const perLbl=tab.period?('<div style="font-size:10.5px;color:#b91c1c;font-weight:600;margin-bottom:6px">📅 Mostrando el tarifario vigente desde '+esc(formatMonth(tab.period))+'</div>'):'';
   const priceIdx=scopeTablaPriceIdx(tab);
-  wrap.innerHTML=tab.rows.map((row,i)=>{
+  wrap.innerHTML=perLbl+tab.rows.map((row,i)=>{
     // Primer valor no-precio = título de la fila (código/nombre del item); el resto,
     // detalle secundario más chico — evita mostrar todo pegado en una sola línea plana.
     const parts=row.filter((_,ci)=>ci!==priceIdx).map(v=>String(v==null?'':v).trim()).filter(Boolean);
@@ -2422,10 +2466,12 @@ async function guardarEnm(){
     if(!tarResults.length || tarResults.every(r=>Math.abs(r.pct)<0.000001)){ toast('Ingresá los % acumulados', 'er'); return; }
     for(const r of tarResults){ if(!r.newPer){ toast('Completá el nuevo período de todos los tramos', 'er'); return; } }
   }
-  let motTxt=null;
+  let motTxt=null, motHtml=null;
   if(textTipos.length){
-    motTxt=(document.getElementById('ne_mot')?.value||'').trim();
+    const motEl=document.getElementById('ne_mot');
+    motTxt=(motEl?.textContent||'').trim();
     if(!motTxt){ toast('Ingresá la descripción', 'er'); return; }
+    motHtml=sanitizeRichText(motEl?.innerHTML||'');
   }
   let otroTitulo=null;
   if(tipos.includes('OTRO')){
@@ -2586,6 +2632,9 @@ async function guardarEnm(){
   if(textTipos.length){
     enm.motivo=motTxt;
     enm.descripcion=motTxt;
+    // Versión enriquecida (negrita/incisos) del mismo texto — la usa el Generar Word; el resto
+    // de la app (listados, Dossier) sigue mostrando enm.motivo/descripcion en texto plano.
+    enm.descripcionRica=motHtml;
     if(tipos.includes('SCOPE')) enm.scopeTipo=document.getElementById('ne_scope_tipo')?.value||'MAYOR';
     if(tipos.includes('OTRO')) enm.otroTitulo=otroTitulo;
   }

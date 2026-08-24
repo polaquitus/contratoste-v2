@@ -1169,7 +1169,7 @@ function downloadAmendmentDoc(cid, enmNum){
     '<head><meta charset="utf-8"><title>Enmienda</title>'+
     '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->'+
     '<style>@page{size:A4;margin:2cm 1.8cm}body{font-family:"Times New Roman",serif;font-size:11pt;line-height:1.5}'+
-    'p{margin:0 0 8pt 0;text-align:justify}table{border-collapse:collapse;width:100%;margin:8pt 0 12pt}'+
+    'p{margin:0 0 8pt 0;text-align:justify}div{margin-bottom:2pt}ol{list-style-type:lower-alpha;margin:0 0 8pt 22pt;padding:0}li{margin-bottom:4pt}table{border-collapse:collapse;width:100%;margin:8pt 0 12pt}'+
     'th{background:#1b3f6e;color:#fff;padding:5pt 7pt;font-size:9.5pt;text-align:left;border:1px solid #1b3f6e}'+
     'td{padding:4pt 7pt;font-size:9.5pt;border:1px solid #d0d4d9}.tot td{background:#eef2f7;font-weight:700}'+
     '.section-title{font-weight:700;text-decoration:underline;margin:14pt 0 8pt}'+
@@ -1330,6 +1330,22 @@ function renderAmendmentHtml(contract, targetEnmNum, opts){
   var orderedTypes=TYPE_ORDER.filter(function(t){ return enmTypes.indexOf(t)>=0; });
   enmTypes.forEach(function(t){ if(orderedTypes.indexOf(t)<0) orderedTypes.push(t); });
 
+  // Texto de Cláusulas/Scope/Otro: si se cargó con el editor enriquecido (negrita/incisos),
+  // se inserta ese HTML tal cual (ya viene saneado a una whitelist de tags al guardar la
+  // enmienda); si es una enmienda vieja sin ese campo, cae al texto plano escapado de siempre.
+  function amendDescHtml(fallbackMsg){
+    var rich=lastEnm.descripcionRica;
+    if(rich && String(rich).trim()){
+      var clean=(typeof sanitizeRichText==='function') ? sanitizeRichText(rich) : rich;
+      // Envuelto en un contenedor justificado explícito: la primera línea tipeada en el editor
+      // no siempre queda dentro de un <p> (depende del navegador), así que confiar solo en el
+      // selector p{text-align:justify} del documento la dejaba sin justificar.
+      return '<div style="text-align:justify">'+clean+'</div>';
+    }
+    var plain=esc(lastEnm.descripcion||lastEnm.motivo||'');
+    return '<p>'+(plain||fallbackMsg)+'</p>';
+  }
+
   var objetoItems=[], sections=[];
   orderedTypes.forEach(function(t){
     if(t==='ACTUALIZACION_TARIFAS'){
@@ -1343,22 +1359,19 @@ function renderAmendmentHtml(contract, targetEnmNum, opts){
       sections.push({title:'PLAZO', body:
         '<p>Se extiende la vigencia del contrato'+(finNueva?(' hasta el <strong>'+finNueva+'</strong>'):'')+', manteniendo vigentes el resto de las condiciones pactadas en la OFERTA.</p>'});
     } else if(t==='SCOPE'){
-      var descScope=esc(lastEnm.descripcion||lastEnm.motivo||'');
       objetoItems.push('Modificar el alcance del servicio contratado.');
       var scopeItemsHtml=renderScopeItemsTable(lastEnm);
       sections.push({title:'ACT. DE ALCANCE', body:
-        '<p>'+(descScope||'Se modifica el alcance del servicio contratado, conforme lo detallado en la presente enmienda.')+'</p>'+scopeItemsHtml});
+        amendDescHtml('Se modifica el alcance del servicio contratado, conforme lo detallado en la presente enmienda.')+scopeItemsHtml});
     } else if(t==='CLAUSULAS'){
-      var descCl=esc(lastEnm.descripcion||lastEnm.motivo||'');
       objetoItems.push('Modificar y/o incorporar cláusulas de las Condiciones Particulares.');
       sections.push({title:'CLÁUSULAS', body:
-        '<p>'+(descCl||'Se modifican y/o incorporan cláusulas de las Condiciones Particulares, conforme lo detallado en la presente enmienda.')+'</p>'});
+        amendDescHtml('Se modifican y/o incorporan cláusulas de las Condiciones Particulares, conforme lo detallado en la presente enmienda.')});
     } else {
-      var descOt=esc(lastEnm.descripcion||lastEnm.motivo||'');
       var otroTitle=esc(lastEnm.otroTitulo||'OTROS');
       objetoItems.push('Modificar las condiciones de la OFERTA según lo detallado a continuación.');
       sections.push({title:otroTitle, body:
-        '<p>'+(descOt||'Se modifican las condiciones de la OFERTA conforme lo detallado en la presente enmienda.')+'</p>'});
+        amendDescHtml('Se modifican las condiciones de la OFERTA conforme lo detallado en la presente enmienda.')});
     }
   });
   var objetoHtml=objetoItems.map(function(txt,i){ return '<p style="margin-left:20pt">1.'+(i+1)+'&nbsp;&nbsp;'+txt+'</p>'; }).join('');
@@ -1415,7 +1428,8 @@ function renderAmendmentHtml(contract, targetEnmNum, opts){
   '.page{width:210mm;min-height:297mm;margin:0 auto;padding:25mm 22mm;page-break-after:always}'+
   '.page:last-child{page-break-after:auto}'+
   'h2{font-size:12pt;font-weight:700;margin-bottom:8pt}'+
-  'p{margin-bottom:8pt;text-align:justify}'+
+  'p{margin-bottom:8pt;text-align:justify}div{margin-bottom:2pt}'+
+  'ol{list-style-type:lower-alpha;margin:0 0 8pt 22pt;padding:0}li{margin-bottom:4pt}'+
   '.center{text-align:center;margin:18pt 0}.center p{text-align:center;margin-bottom:6pt}'+
   '.section-title{font-size:11pt;font-weight:700;text-decoration:underline;margin:14pt 0 8pt}'+
   '.ref-line{margin-bottom:6pt}.ref-line>strong{display:inline-block;min-width:32pt}'+
