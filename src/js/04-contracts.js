@@ -1839,26 +1839,33 @@ function sanitizeRichText(html){
 // ── Alcance (SCOPE): agregar/quitar items del tarifario dentro de la misma enmienda ──
 let _neScopeNuevos=[]; // items nuevos a agregar (in-memory mientras el panel está abierto)
 function scopeTablasDisponibles(cc, asOfPeriod){
-  // Última versión de cada tarifario por nombre VIGENTE AL PERÍODO indicado (la de period más
-  // alto que no supere asOfPeriod) — si no se pasa período, se usa la más reciente en general.
-  // Ej: si hay versiones ene-26/abr-26/ago-26 y asOfPeriod='2026-06', debe traer la de abr-26
-  // (la vigente en junio), no la de ago-26 aunque sea la más nueva que exista en el contrato.
-  const byName={};
-  (cc.tarifarios||[]).forEach(t=>{
-    const baseName=String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim();
+  // Agrupa por GENERACIÓN (mismo período = misma tanda de tablas guardada junta, igual que
+  // las pestañas "Base contractual" / "Enm.N°X" de Listas de Precios), no por nombre de tabla:
+  // el nombre puede cambiar de una generación a otra (ej. "TARIFARIO" en la base pasa a
+  // llamarse "TARIFARIO FINAL (Enm.N)" en las actualizaciones posteriores) y agrupar por
+  // nombre partía en dos lo que en realidad es un solo tarifario que evoluciona en el tiempo.
+  // Se toma la generación (período) más alta que no supere asOfPeriod — o la más reciente en
+  // general si no se pasa período — y se listan TODAS las tablas de esa generación (puede
+  // haber más de una, ej. "Mano de Obra" + "Equipos" en el mismo período).
+  const tars=cc.tarifarios||[];
+  let bestPeriod=null;
+  tars.forEach(t=>{
     const per=String(t.period||'');
-    if(asOfPeriod && per>String(asOfPeriod)) return;
-    if(!byName[baseName] || per>String(byName[baseName].period||'')) byName[baseName]=t;
+    if(!per)return;
+    if(asOfPeriod && per>String(asOfPeriod))return;
+    if(bestPeriod===null||per>bestPeriod)bestPeriod=per;
   });
-  return Object.keys(byName).map(name=>({name, table:byName[name]}));
+  if(bestPeriod===null)return [];
+  return tars.filter(t=>String(t.period||'')===bestPeriod).map((t,i)=>({name:t.name||('Tabla '+(i+1)), idx:i, table:t}));
 }
 function scopeTablaActual(){
   const cc=window.DB.find(x=>x.id===window.detId);if(!cc)return null;
   const sel=document.getElementById('ne_scope_tabla');
-  const name=sel?sel.value:null;
-  if(!name)return null;
+  const idx=sel&&sel.value!==''?parseInt(sel.value):NaN;
+  if(isNaN(idx))return null;
   const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
-  const found=scopeTablasDisponibles(cc, asOf||null).find(o=>o.name===name);
+  const opts=scopeTablasDisponibles(cc, asOf||null);
+  const found=opts[idx];
   return found?found.table:null;
 }
 function renderScopeTablaOptions(){
@@ -1866,9 +1873,7 @@ function renderScopeTablaOptions(){
   const sel=document.getElementById('ne_scope_tabla');if(!sel)return;
   const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
   const opts=scopeTablasDisponibles(cc, asOf||null);
-  const prevVal=sel.value;
-  sel.innerHTML=opts.length?opts.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tablas vigentes a ese período —</option>';
-  if(prevVal && opts.some(o=>o.name===prevVal)) sel.value=prevVal;
+  sel.innerHTML=opts.length?opts.map((o,i)=>'<option value="'+i+'">'+esc(o.name)+'</option>').join(''):'<option value="">— sin tablas vigentes a ese período —</option>';
   onScopeTablaChange();
   onScopeTipoChange();
 }
@@ -1900,15 +1905,22 @@ function renderScopeQuitarList(){
   // precios se está decidiendo qué sacar (puede no ser la más nueva que existe en el contrato).
   const asOf=(document.getElementById('ne_scope_periodo')?.value||'').trim();
   const perLbl=tab.period?('<div style="font-size:10.5px;color:#b91c1c;font-weight:600;margin-bottom:6px">📅 Tarifario vigente desde '+esc(formatMonth(tab.period))+(asOf?(' — es la versión aplicable al período elegido ('+esc(formatMonth(asOf))+')'):'')+'</div>'):'';
-  // Detalle de diagnóstico: todas las versiones que existen para esta tabla (sin filtrar por
-  // período), para poder confirmar a ojo cuál es la vigente si algo no coincide con lo esperado.
+  // Detalle de diagnóstico: todas las generaciones (períodos) del tarifario que existen en el
+  // contrato, con las tablas de cada una — para confirmar a ojo cuál se está usando y por qué.
   const cc0=window.DB.find(x=>x.id===window.detId);
-  const selName=document.getElementById('ne_scope_tabla')?.value||'';
-  const allVersions=cc0?(cc0.tarifarios||[]).filter(t=>String(t.name||'Tabla').replace(/\s*\(Enm\.\d+\)$/,'').trim()===selName)
-    .slice().sort((a,b)=>String(a.period||'').localeCompare(String(b.period||''))):[];
-  const versionsDbg=allVersions.length>1?('<details style="margin-bottom:8px"><summary style="font-size:10px;color:var(--g500);cursor:pointer">🔍 Ver las '+allVersions.length+' versiones disponibles de esta tabla</summary>'
+  const byPeriod={};
+  (cc0?.tarifarios||[]).forEach(t=>{
+    const per=String(t.period||'(sin período)');
+    (byPeriod[per]=byPeriod[per]||[]).push(t);
+  });
+  const periods=Object.keys(byPeriod).sort();
+  const versionsDbg=periods.length>1?('<details style="margin-bottom:8px"><summary style="font-size:10px;color:var(--g500);cursor:pointer">🔍 Ver las '+periods.length+' generaciones de tarifario disponibles</summary>'
     +'<div style="font-size:10.5px;color:var(--g600c);margin-top:4px;padding-left:10px">'
-    +allVersions.map(t=>'<div>· '+esc(t.period||'(sin período)')+(t.enmNum?(' — Enm. N°'+t.enmNum):'')+(t===tab?' <strong>← mostrada acá</strong>':'')+'</div>').join('')
+    +periods.map(per=>{
+      const isActive=(per===String(tab.period||''));
+      const names=byPeriod[per].map(t=>esc(t.name||'Tabla')+(t.enmNum?(' (Enm.'+t.enmNum+')'):'')).join(', ');
+      return '<div>· '+esc(per)+': '+names+(isActive?' <strong>← generación mostrada acá</strong>':'')+'</div>';
+    }).join('')
     +'</div></details>'):'';
   const priceIdx=scopeTablaPriceIdx(tab);
   wrap.innerHTML=perLbl+versionsDbg+tab.rows.map((row,i)=>{
