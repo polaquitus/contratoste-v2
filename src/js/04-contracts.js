@@ -651,7 +651,7 @@ function renderDet(){
         <td class="mono" style="font-size:11px">${a.enmRef?'Enm.'+a.enmRef:'—'}</td>
         <td>${a.periodo||'—'}</td>
         <td class="mono">${fN(prev)}</td>
-        <td class="mono" style="font-weight:700;color:${isPoly?'#92400e':'var(--b500)'}">+${fN(a.monto||0)}</td>
+        <td class="mono" style="font-weight:700;color:${isPoly?'#92400e':'var(--b500)'}">${(a.monto||0)>=0?'+':''}${fN(a.monto||0)}</td>
         <td class="mono" style="font-size:11px;color:var(--g600c)" title="Equivalente USD a TC ${fN(TC_USD)}">${fmtUsd(aveUsd)}</td>
         <td class="mono" style="font-weight:700">${fN(newTV)}</td>
         <td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.concepto||subtipoLabel)}</td>
