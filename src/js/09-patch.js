@@ -438,7 +438,15 @@ window.fuzzySearchContracts = function(query) {
   if (!query || query.length < 2) return [];
   if (!_fuseInstance) window.initFuzzySearch();
   if (!_fuseInstance) return [];
-  
+
+  // Búsqueda por número de contrato (mayoría de dígitos): el fuzzy match de Fuse.js
+  // es demasiado permisivo para IDs numéricos y devuelve contratos sin relación con
+  // el texto tipeado. Para ese caso alcanza y sobra con un substring exacto.
+  var digitCount = (query.match(/\d/g) || []).length;
+  if (digitCount >= Math.ceil(query.length * 0.6)) {
+    return _searchCache.filter(function(c){ return String(c.numero||'').indexOf(query) !== -1; }).slice(0, 15);
+  }
+
   var results = _fuseInstance.search(query);
   return results.slice(0, 15).map(function(r){ return r.item; });
 };

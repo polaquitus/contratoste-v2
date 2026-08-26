@@ -563,7 +563,7 @@
   function q(id){return document.getElementById(id);}
   function clear(el){while(el&&el.firstChild)el.removeChild(el.firstChild);}
   function make(tag,cls,txt){var el=document.createElement(tag);if(cls)el.className=cls;if(txt!=null)el.textContent=txt;return el;}
-  function nowUser(){try{return (typeof _APP_USER!=='undefined'&&_APP_USER)||(typeof _APP_ROLE!=='undefined'&&_APP_ROLE)||'—';}catch(e){return '—';}}
+  function nowUser(){try{return (typeof _APP_USER!=='undefined'&&_APP_USER&&_APP_USER.username)||(typeof _APP_ROLE!=='undefined'&&_APP_ROLE)||'—';}catch(e){return '—';}}
 
   function emptyData(){
     var clauses={};
