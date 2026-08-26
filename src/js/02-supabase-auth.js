@@ -218,7 +218,12 @@ function logoutApp(){
   if(typeof toast==='function') toast('Sesión cerrada','ok');
 }
 document.addEventListener('DOMContentLoaded', function(){
-  authLock(); setRoleBadge(); applyRolePermissions();
+  // No re-bloquear si la sesión ya se rehidrató desde sessionStorage (la IIFE de
+  // initApp() al final de este archivo corre ANTES de este evento y ya pudo haber
+  // llamado authUnlock() — bloquear acá encima dejaría la UI trabada sin nada que
+  // la desbloquee de nuevo).
+  if(!_APP_USER) authLock();
+  setRoleBadge(); applyRolePermissions();
   /* ensureLoginOverlay handled by initApp IIFE */
 });
 
