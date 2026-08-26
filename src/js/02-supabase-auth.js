@@ -95,10 +95,22 @@ let _APP_ROLE = null;
 
 
 function authLock(){ try{ document.body.classList.add('auth-locked'); }catch(_e){} }
+function populatePersonnelSelects(){
+  const fill=(id,list)=>{
+    const sel=document.getElementById(id);
+    if(!sel||!Array.isArray(list))return;
+    const cur=sel.value;
+    sel.innerHTML='<option value="">—</option>'+list.map(n=>'<option>'+n.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</option>').join('');
+    sel.value=cur;
+  };
+  fill('f_resp', typeof PERSONNEL_RESP!=='undefined'?PERSONNEL_RESP:null);
+  fill('f_own', typeof PERSONNEL_OWNER!=='undefined'?PERSONNEL_OWNER:null);
+}
 function authUnlock(){
   try{ document.body.classList.remove('auth-locked'); }catch(_e){}
   try{ document.getElementById('loginOverlay')?.remove(); }catch(_e){}
   try{ hideLoader(); }catch(_e){}
+  try{ populatePersonnelSelects(); }catch(_e){}
 }
 function loginOverlayHtml(){
   return `<div id="loginOverlay" style="position:fixed;inset:0;background:linear-gradient(135deg,rgba(20,48,58,.97),rgba(36,86,108,.94));z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px">
@@ -158,6 +170,7 @@ async function loginApp(){
     if(String(hash).toLowerCase() !== String(row.password_hash||'').toLowerCase()) throw new Error('Contraseña inválida');
     _APP_USER = {id:row.id || row.username, username:row.username};
     _APP_ROLE = (row.role || 'SIN_ROL').trim();
+    try{ sessionStorage.setItem('app_session', JSON.stringify({id:_APP_USER.id, username:_APP_USER.username, role:_APP_ROLE})); }catch(_e){}
     authUnlock();
     setRoleBadge();
     applyRolePermissions();
@@ -175,12 +188,25 @@ async function loginApp(){
 }
 async function requireLogin(){
   if(_APP_USER && _APP_ROLE){ setRoleBadge(); applyRolePermissions(); if(typeof applyPermissions==='function') applyPermissions(); authUnlock(); return true; }
+  try{
+    const raw=sessionStorage.getItem('app_session');
+    if(raw){
+      const s=JSON.parse(raw);
+      if(s && s.username && s.role){
+        _APP_USER={id:s.id||s.username, username:s.username};
+        _APP_ROLE=s.role;
+        setRoleBadge(); applyRolePermissions(); if(typeof applyPermissions==='function') applyPermissions(); authUnlock();
+        return true;
+      }
+    }
+  }catch(_e){}
   ensureLoginOverlay();
   return false;
 }
 function logoutApp(){
   _APP_USER = null;
   _APP_ROLE = null;
+  try{ sessionStorage.removeItem('app_session'); }catch(_e){}
   authLock();
   setRoleBadge();
   applyRolePermissions();
@@ -341,6 +367,9 @@ async function loadProv() {
     } catch(e3) {
       console.warn('[loadProv] proveedores also failed:', e3.message);
     }
+    // Las 3 estrategias contra Supabase fallaron pese a estar "conectados" (SB_OK) —
+    // avisar, porque lo que se muestra a continuación es caché local potencialmente vieja.
+    if (typeof toast==='function') toast('No se pudo conectar con Proveedores — mostrando datos guardados localmente','er');
   }
   // Fallback: localStorage
   try {

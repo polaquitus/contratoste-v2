@@ -563,8 +563,12 @@ async function guardar(){
     B:{ enabled: !!c.trigB, threshold: Number(c.trigBpct)||0 },
     C:{ enabled: !!c.trigC, months: Number(c.trigCmes)||0 }
   };
-  if(editId){const i=window.DB.findIndex(x=>x.id===editId);if(i!==-1)window.DB[i]=c;editId=null;toast('Actualizado','ok');}
-  else{window.DB.push(c);toast('Contrato creado','ok');}
+  const wasNew=!editId;
+  const savedEditId=editId;
+  const prevIdx=editId?window.DB.findIndex(x=>x.id===editId):-1;
+  const prevSnapshot=prevIdx!==-1?{...window.DB[prevIdx]}:null;
+  if(editId){const i=window.DB.findIndex(x=>x.id===editId);if(i!==-1)window.DB[i]=c;editId=null;}
+  else{window.DB.push(c);}
   try{
     if(c.trigB||c.trigC){
       PolUpdate.saveConditions(c.id,{
@@ -583,10 +587,22 @@ async function guardar(){
   try{
     await sbUpsertItem('contratos',c);
   }catch(e){
+    // Rollback de la actualización optimista: el guardado remoto falló, así que
+    // window.DB no puede quedar mostrando un contrato que en realidad no se guardó.
+    if(wasNew){
+      const idx=window.DB.findIndex(x=>x.id===c.id);
+      if(idx!==-1)window.DB.splice(idx,1);
+    } else if(prevSnapshot){
+      const idx=window.DB.findIndex(x=>x.id===c.id);
+      if(idx!==-1)window.DB[idx]=prevSnapshot;
+      editId=savedEditId;
+    }
     toast('Error al guardar: '+e.message,'er');
     console.error('guardar() save error:',e);
+    renderList();updNav();
     return;
   }
+  toast(wasNew?'Contrato creado':'Actualizado','ok');
   resetForm();renderList();updNav();go('list');
   
   // Actualizar fuzzy search cache
