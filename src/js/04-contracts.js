@@ -111,8 +111,24 @@ function renderDossierHtml(c){
       else if(e.pctPoli) detalleParts.push('+'+((e.pctPoli||0)*100).toFixed(2)+'% '+(formatMonth(e.basePeriodo||'')||e.basePeriodo||'\u2014')+'\u2192'+(formatMonth(e.nuevoPeriodo||'')||e.nuevoPeriodo||'\u2014'));
     }
     var detalle=detalleParts.length?_e(detalleParts.join(' \u00b7 ')):'<span style="color:#cbd5e1">\u2014</span>';
-    return '<tr'+(e.superseded?' style="opacity:.5"':'')+'><td><strong>N\u00b0'+_e(e.num)+'</strong></td><td>'+tagsHtml+(e.superseded?' <span class="tag otro" style="font-size:9px">SUPERSEDED</span>':'')+'</td><td style="font-size:12px">'+detalle+'</td><td style="font-size:12px;color:#6b7280">'+_d((e.fecha||'').substring(0,10))+'</td><td>'+_e(e.descripcion||e.motivo||'\u2014')+'</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-cell">Sin enmiendas registradas</td></tr>';
+    var conceptoParts=ts.map(function(t){
+      if(t==='ACTUALIZACION_TARIFAS')return 'Act. de Tarifas';
+      if(t==='EXTENSION')return 'Extensi\u00f3n de Plazo';
+      if(t==='SCOPE')return e.scopeTipo==='MENOR'?'Menor Scope':'Mayor Scope';
+      if(t==='CLAUSULAS')return 'Act. de Cl\u00e1usulas';
+      if(t==='OTRO')return e.otroTitulo||'Otro';
+      return t;
+    });
+    var concepto=_e(conceptoParts.join(' + ')||'\u2014');
+    var periodoParts=[];
+    if(ts.indexOf('ACTUALIZACION_TARIFAS')>=0){
+      if(Array.isArray(e.tramos)&&e.tramos.length) periodoParts.push(e.tramos.map(function(t){return formatMonth(t.nuevoPeriodo||'')||t.nuevoPeriodo||'';}).filter(Boolean).join(', '));
+      else if(e.nuevoPeriodo) periodoParts.push(formatMonth(e.nuevoPeriodo)||e.nuevoPeriodo);
+    }
+    if(ts.indexOf('SCOPE')>=0&&e.scopePeriodo) periodoParts.push(formatMonth(e.scopePeriodo)||e.scopePeriodo);
+    var periodoAplic=_e(periodoParts.filter(Boolean).join(' \u00b7 ')||'\u2014');
+    return '<tr'+(e.superseded?' style="opacity:.5"':'')+'><td><strong>N\u00b0'+_e(e.num)+'</strong></td><td>'+tagsHtml+(e.superseded?' <span class="tag otro" style="font-size:9px">SUPERSEDED</span>':'')+'</td><td style="font-size:12px">'+detalle+'</td><td style="font-size:12px;color:#6b7280">'+_d((e.fecha||'').substring(0,10))+'</td><td style="font-size:12px;color:#6b7280">'+periodoAplic+'</td><td>'+concepto+'</td></tr>';
+  }).join(''):'<tr><td colspan="6" class="empty-cell">Sin enmiendas registradas</td></tr>';
   // Historial de AVEs: Tipo grande (Owner/Polin\u00f3mica \u2014 Spot vs Ajustable queda de detalle
   // secundario, no como categor\u00eda principal), monto en la moneda del contrato y su
   // equivalente en USD AL MOMENTO en que se carg\u00f3 (a.montoUsd, guardado fijo al crear el
@@ -392,7 +408,7 @@ function renderDossierHtml(c){
 +'</div>'
 +'</div>'
 +'<div class="sh"><span class="ico">&#x1F4CB;</span>Enmiendas<span class="ct">'+enms.length+' registradas</span></div>'
-+'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Descripci\u00f3n</th></tr></thead><tbody>'+enmRows+'</tbody></table></div>'
++'<div class="tbl-wrap"><table><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Per\u00edodo de Aplicaci\u00f3n</th><th>Descripci\u00f3n</th></tr></thead><tbody>'+enmRows+'</tbody></table></div>'
 +'</div>'
 +'</body></html>';
 }
@@ -659,7 +675,30 @@ function renderDet(){
       </tr>`;
     });
     let enmRows='';
-    if(!enms.length)enmRows='<tr><td colspan="6" style="text-align:center;color:var(--g500);font-style:italic;padding:12px">Sin enmiendas registradas</td></tr>';
+    if(!enms.length)enmRows='<tr><td colspan="7" style="text-align:center;color:var(--g500);font-style:italic;padding:12px">Sin enmiendas registradas</td></tr>';
+    // Etiqueta de concepto para la columna "Descripción" — no es el texto libre cargado en
+    // el detalle de la enmienda (eso queda solo en el documento generado), sino qué concepto
+    // se aplicó: para SCOPE distingue Mayor/Menor según e.scopeTipo.
+    const _enmConceptoLbl=e=>enmTipos(e).map(t=>{
+      if(t==='ACTUALIZACION_TARIFAS')return 'Act. de Tarifas';
+      if(t==='EXTENSION')return 'Extensión de Plazo';
+      if(t==='SCOPE')return e.scopeTipo==='MENOR'?'Menor Scope':'Mayor Scope';
+      if(t==='CLAUSULAS')return 'Act. de Cláusulas';
+      if(t==='OTRO')return e.otroTitulo||'Otro';
+      return t;
+    }).join(' + ')||'—';
+    // Período de aplicación — distinto de "Fecha" (fecha de emisión de la enmienda): el
+    // mes/período desde el que rige el cambio (nuevoPeriodo del tramo para Act.Tarifas,
+    // scopePeriodo para Scope). Cláusulas/Extensión/Otro no tienen un período propio.
+    const _enmPeriodoAplic=e=>{
+      const parts=[];
+      if(enmHasTipo(e,'ACTUALIZACION_TARIFAS')){
+        if(Array.isArray(e.tramos)&&e.tramos.length) parts.push(e.tramos.map(t=>formatMonth(t.nuevoPeriodo||'')||t.nuevoPeriodo||'').filter(Boolean).join(', '));
+        else if(e.nuevoPeriodo) parts.push(formatMonth(e.nuevoPeriodo)||e.nuevoPeriodo);
+      }
+      if(enmHasTipo(e,'SCOPE')&&e.scopePeriodo) parts.push(formatMonth(e.scopePeriodo)||e.scopePeriodo);
+      return parts.filter(Boolean).join(' · ')||'—';
+    };
     enms.forEach((e, idx)=>{
       // Una enmienda puede combinar varios conceptos (e.tipos) — se muestra un
       // "chip" por cada uno (enmTipos hace fallback a [e.tipo] para enmiendas
@@ -675,7 +714,7 @@ function renderDet(){
       const extra=extraParts.join(' · ');
       const corrBdg=e.correccionDeEnm?`<span class="bdg corr">CORR.ENM.${e.correccionDeEnm}</span> `:'';
       const supBdg=e.superseded?`<span class="bdg exp" style="font-size:8.5px">SUPERSEDED</span> `:'';
-      enmRows+=`<tr ${e.superseded?'style="opacity:.5"':''}><td style="font-weight:700;font-size:12px">N°${e.num}</td><td>${corrBdg}${supBdg}${tChips}</td><td style="font-size:11px">${extra}</td><td style="font-size:11px;color:var(--g500)">${fD((e.fecha||'').substring(0,10))}</td><td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(e.motivo||e.descripcion||'')}</td><td style="white-space:nowrap"><button class="btn btn-a btn-sm" style="padding:3px 8px;font-size:10px;margin-right:3px" onclick="openAmendmentDoc('${c.id}',${e.num})" title="Vista previa / Imprimir / PDF">📄</button><button class="btn btn-p btn-sm" style="padding:3px 8px;font-size:10px;margin-right:3px" onclick="downloadAmendmentDoc('${c.id}',${e.num})" title="Descargar Word .doc editable">📝</button><button class="btn btn-d btn-sm" style="padding:3px 8px;font-size:10px" onclick="delEnm(${e.num})">🗑</button></td></tr>`;
+      enmRows+=`<tr ${e.superseded?'style="opacity:.5"':''}><td style="font-weight:700;font-size:12px">N°${e.num}</td><td>${corrBdg}${supBdg}${tChips}</td><td style="font-size:11px">${extra}</td><td style="font-size:11px;color:var(--g500)">${fD((e.fecha||'').substring(0,10))}</td><td style="font-size:11px;color:var(--g600c)">${esc(_enmPeriodoAplic(e))}</td><td style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(_enmConceptoLbl(e))}</td><td style="white-space:nowrap"><button class="btn btn-a btn-sm" style="padding:3px 8px;font-size:10px;margin-right:3px" onclick="openAmendmentDoc('${c.id}',${e.num})" title="Vista previa / Imprimir / PDF">📄</button><button class="btn btn-p btn-sm" style="padding:3px 8px;font-size:10px;margin-right:3px" onclick="downloadAmendmentDoc('${c.id}',${e.num})" title="Descargar Word .doc editable">📝</button><button class="btn btn-d btn-sm" style="padding:3px 8px;font-size:10px" onclick="delEnm(${e.num})">🗑</button></td></tr>`;
     });
     document.getElementById('detCard').innerHTML=`<div class="card">
       <div class="det-h">
@@ -800,7 +839,7 @@ function renderDet(){
       })():''}
       <div class="section-box">
         <h3>📑 Enmiendas <span class="tcnt">${enms.length} registradas</span></h3>
-        <table class="enm-tbl"><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Descripción</th><th></th></tr></thead><tbody>${enmRows}</tbody></table>
+        <table class="enm-tbl"><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Período de Aplicación</th><th>Descripción</th><th></th></tr></thead><tbody>${enmRows}</tbody></table>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-p btn-sm" onclick="openEnmPanel()">📑 + Nueva Enmienda</button>
           <button class="btn btn-d btn-sm" onclick="resetSection('enmiendas')">🗑 Reset</button>
