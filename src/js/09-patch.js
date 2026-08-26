@@ -491,7 +491,7 @@ window.selectFuzzyResult = function(contractId) {
 
 window.initKeyboardShortcuts = function() {
   document.addEventListener('keydown', function(e) {
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) {
       if (e.key === 'Escape') {
         closeAllModals();
         e.preventDefault();
