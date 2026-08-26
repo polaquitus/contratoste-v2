@@ -803,8 +803,6 @@ function renderDet(){
         <table class="enm-tbl"><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Descripción</th><th></th></tr></thead><tbody>${enmRows}</tbody></table>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-p btn-sm" onclick="openEnmPanel()">📑 + Nueva Enmienda</button>
-          ${enms.length?`<button class="btn btn-a btn-sm" onclick="openAmendmentDoc('${c.id}')" title="Generar documento de la última enmienda registrada (N°${enms[enms.length-1].num})">📄 Generar Enmienda (última)</button>`:''}
-          <button class="btn btn-s btn-sm" onclick="openEnmImportPicker()">🤖 Importar PDF/DOC con IA</button>
           <button class="btn btn-d btn-sm" onclick="resetSection('enmiendas')">🗑 Reset</button>
           <input type="file" id="enmPdfIn" accept=".pdf,.docx,.doc" multiple style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" onchange="importEnmPdfs(this.files)">
         </div>

@@ -1223,14 +1223,23 @@ window.saveImportedEnms = async function saveImportedEnms() {
 async function resetSection(section){
   const c=window.DB.find(x=>x.id===window.detId); if(!c){toast('Contrato no encontrado','er');return;}
   if(section==='enmiendas'){
-    if(!confirm('Esto eliminará las enmiendas y los tarifarios asociados a enmiendas. ¿Continuar?')) return;
+    if(!confirm('⚠️ Esto eliminará TODAS las enmiendas de este contrato, junto con los ajustes (AVEs) y tarifarios que generaron. El monto vigente se recalcula a partir del monto base. Esta acción no se puede deshacer.\n\n¿Continuar?')) return;
     c.enmiendas=[];
     c.tarifarios=(c.tarifarios||[]).filter(t=>!t.enmNum);
+    // Los AVEs generados por una enmienda (enmRef seteado) son "ajustes aplicados" —
+    // deben irse junto con la enmienda que los originó, si no quedan huérfanos.
+    c.aves=(c.aves||[]).filter(a=>!a.enmRef);
+    // Revertir el acumulado de ajuste de los AVE Owner "ajustable": su progreso venía
+    // exclusivamente de enmiendas que se acaban de eliminar.
+    c.aves.forEach(a=>{ if(a.tipo==='OWNER'&&a.ajustable){ delete a._ajustadoAcum; delete a.lastAdjYm; } });
+    const avePolyNow=c.aves.filter(a=>a.tipo==='POLINOMICA').reduce((s,a)=>s+(a.monto||0),0);
+    const aveOwnerNow=c.aves.filter(a=>a.tipo==='OWNER').reduce((s,a)=>s+(a.monto||0),0);
+    if(c.montoBase!=null) c.monto=Math.round((c.montoBase+avePolyNow+aveOwnerNow)*100)/100;
     if(c.fechaFinOriginal) c.fechaFin=c.fechaFinOriginal;
     c.updatedAt=new Date().toISOString();
     if(!SB_OK) localStorage.setItem('cta_v7', JSON.stringify(window.DB));
     else await sbUpsertItem('contratos', c);
-    renderDet(); renderList(); toast('Enmiendas reiniciadas','ok');
+    renderDet(); renderList(); toast('Enmiendas y ajustes reiniciados','ok');
     return;
   }
   if(section==='aves'){
