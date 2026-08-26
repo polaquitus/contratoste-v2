@@ -122,19 +122,29 @@ var PolUpdate = (function(){
     var tars=getTar()||[]; var currentList=tars.filter(function(t){return t.period===contract.btar||(!t.period&&tars.indexOf(t)===0);});
     state.currentPrices=currentList.length&&currentList[0].rows?currentList[0].rows.map(function(r){return{description:r[1]||'',unit:r[2]||'',quantity:parseFloat(r[3])||1,unit_price:parseFloat(r[3])||0};}):[{description:'Item base',unit:'UN',quantity:1,unit_price:contract.monto||0}];
     // Ko: leer directo de IDX_STORE (idxRows) — evita datos stale de indicator_snapshots
-    var Ko=1;
+    // Fórmula polinómica lineal: Ko = Σ inc_i × (1 + var_i%/100) — misma convención que
+    // calcularKo() (Calculadora Ko, 09-patch.js) y computePoliDeltaPct() de este archivo.
+    var Ko=0;
     var baseYm=ymOf(baseDate), evalYm=ymOf(ymToday());
     poly.forEach(function(c){
-      var rows=safeIdxRows(c.idx); if(!rows.length) return;
-      // Modo pct compuesto (IPC, IPIM, etc.) — needsReview: dato auto-obtenido que no pasó
-      // las validaciones de plausibilidad (05-indices.js validateIdxRow), nunca debe entrar
-      // solo a un cálculo de AVE sin revisión manual.
-      var monthRows=rows.filter(function(r){ return r.ym&&compareYm(r.ym,baseYm)>0&&compareYm(r.ym,evalYm)<=0&&r.pct!=null&&isFinite(Number(r.pct))&&!r.needsReview; });
-      if(monthRows.length){ var acc=1; monthRows.forEach(function(r){ acc*=1+(Number(r.pct)/100); }); Ko*=Math.pow(acc,Number(c.inc)||0); return; }
-      // Fallback ratio de valores absolutos (USD, gasoil)
-      var bRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,baseYm)<=0&&r.value!=null&&Number(r.value)>0&&!r.needsReview; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
-      var eRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,evalYm)<=0&&r.value!=null&&Number(r.value)>0&&!r.needsReview; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
-      if(bRow&&eRow&&Number(bRow.value)>0){ Ko*=Math.pow(Number(eRow.value)/Number(bRow.value),Number(c.inc)||0); }
+      var inc=Number(c.inc)||0;
+      var contrib=1; // sin datos de variación: no aporta cambio para esa porción
+      var rows=safeIdxRows(c.idx);
+      if(rows.length){
+        // Modo pct compuesto (IPC, IPIM, etc.) — needsReview: dato auto-obtenido que no pasó
+        // las validaciones de plausibilidad (05-indices.js validateIdxRow), nunca debe entrar
+        // solo a un cálculo de AVE sin revisión manual.
+        var monthRows=rows.filter(function(r){ return r.ym&&compareYm(r.ym,baseYm)>0&&compareYm(r.ym,evalYm)<=0&&r.pct!=null&&isFinite(Number(r.pct))&&!r.needsReview; });
+        if(monthRows.length){
+          var acc=1; monthRows.forEach(function(r){ acc*=1+(Number(r.pct)/100); }); contrib=acc;
+        } else {
+          // Fallback ratio de valores absolutos (USD, gasoil)
+          var bRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,baseYm)<=0&&r.value!=null&&Number(r.value)>0&&!r.needsReview; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
+          var eRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,evalYm)<=0&&r.value!=null&&Number(r.value)>0&&!r.needsReview; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
+          if(bRow&&eRow&&Number(bRow.value)>0){ contrib=Number(eRow.value)/Number(bRow.value); }
+        }
+      }
+      Ko+=inc*contrib;
     });
     state.updatedPrices=state.currentPrices.map(function(item){
       var newPrice=item.unit_price*Ko;
@@ -327,7 +337,9 @@ function computeConditionsResult(contract, conditions, baseMonth, mesEval, overr
       var incWeight=Number(p.inc)||0;
       if(variacion!=null){
         countPoly++;
-        var aporte=(Math.pow(1+variacion/100, incWeight)-1)*100;
+        // Fórmula polinómica lineal: aporte_i = inc_i × var_i% (misma convención que
+        // calcularKo() en 09-patch.js y calculateUpdate()/computePoliDeltaPct() en este archivo).
+        var aporte=incWeight*variacion;
         perIdx.push({idx:p.idx, pct:variacion, manual:manual, hasData:true, inc:incWeight*100, aporte:aporte});
       } else {
         anyMissing=true;
@@ -340,7 +352,7 @@ function computeConditionsResult(contract, conditions, baseMonth, mesEval, overr
       // un concepto de baja incidencia no puede tapar a uno que ya superó el umbral.
       var koTotal=null, cumpleUmbral=false;
       if(!anyMissing){
-        koTotal=(perIdx.reduce(function(k,d){return k*(1+d.aporte/100);},1)-1)*100;
+        koTotal=perIdx.reduce(function(k,d){return k+d.aporte;},0);
         cumpleUmbral=koTotal>=conditions.allComponentsThreshold;
       }
       // firstComplianceMonth: primer mes (desde baseMonth+1 hasta mesEval) donde el Ko
@@ -620,8 +632,11 @@ function computePoliDeltaPct(contract, refYm, targetYm){
   if(!contract || !refYm || !targetYm || compareYm(targetYm,refYm)<=0) return null;
   var poly=(contract.poly||[]).filter(function(p){return p && p.idx;});
   if(!poly.length) return null;
-  var ko=1, count=0;
+  // Fórmula polinómica lineal: Ko = Σ inc_i × (1 + var_i%/100) — misma convención que
+  // calcularKo() (Calculadora Ko, 09-patch.js) y calculateUpdate() de este archivo.
+  var ko=0, count=0;
   poly.forEach(function(c){
+    var inc=Number(c.inc)||0;
     // 1. Intentar con datos frescos de IDX_STORE (sin side-effects en IDX_STORE)
     var rows=safeIdxRows(c.idx);
     if(rows.length){
@@ -629,21 +644,21 @@ function computePoliDeltaPct(contract, refYm, targetYm){
       var monthRows=rows.filter(function(r){ return r.ym&&compareYm(r.ym,refYm)>0&&compareYm(r.ym,targetYm)<=0&&r.pct!=null&&isFinite(Number(r.pct)); });
       if(monthRows.length){
         var acc=1; monthRows.forEach(function(r){ acc*=1+(Number(r.pct)/100); });
-        ko*=Math.pow(acc, Number(c.inc)||0);
+        ko+=inc*acc;
         count++; return;
       }
       // Fallback ratio valores absolutos (USD, gasoil)
       var bRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,refYm)<=0&&r.value!=null&&Number(r.value)>0; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
       var eRow=rows.filter(function(r){ return r.ym&&compareYm(r.ym,targetYm)<=0&&r.value!=null&&Number(r.value)>0; }).sort(function(a,b){ return b.ym.localeCompare(a.ym); })[0];
       if(bRow&&eRow&&Number(bRow.value)>0){
-        ko*=Math.pow(Number(eRow.value)/Number(bRow.value), Number(c.inc)||0);
+        ko+=inc*(Number(eRow.value)/Number(bRow.value));
         count++; return;
       }
     }
     // 2. Fallback: indicator_snapshots localStorage (índices MO como PP, UOCRA)
     var calc=computeAccumulatedVariationPct(c.idx, refYm, targetYm);
     if(calc && isFinite(calc.pct)){
-      ko*=Math.pow(1+(Number(calc.pct)/100), Number(c.inc)||0);
+      ko+=inc*(1+(Number(calc.pct)/100));
       count++;
     }
   });

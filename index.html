@@ -33,7 +33,7 @@
   <div class="sb-env">
     <span class="dot"></span>
     <span class="lab"><strong>Producción</strong> · sincronizado</span>
-    <span class="ver" id="sbVerBadge">v174</span>
+    <span class="ver" id="sbVerBadge">v175</span>
   </div>
   <!-- Nav -->
   <nav class="sb-nav">
@@ -69,7 +69,7 @@
 <main class="mn">
 <header class="tb">
   <div class="tb-left">
-    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v174-qa-header-buttons</span></h1>
+    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v175-fix-incidencia-ko-lineal</span></h1>
   </div>
   <div class="tba" id="pgA">
     <div style="position:relative;width:100%;max-width:360px;">
@@ -538,7 +538,7 @@
     <div class="fgrp" style="margin-bottom:16px"><label>¿Contiene fórmula polinómica?</label><div class="tw"><label class="tg"><input type="checkbox" id="f_hasPoly" onchange="onPolyToggle()"><span class="sl"></span></label><span class="tl" id="l_hasPoly">No</span></div></div>
     <div id="polyWrap" style="display:none">
       <div id="polyBox"></div>
-      <div class="poly-sum"><span class="ps-l">Σ Incidencias:</span><span class="ps-v mono" id="psVal">0.00</span><span class="ps-l" id="psNote" style="margin-left:6px">(debe sumar 1.00)</span></div>
+      <div class="poly-sum"><span class="ps-l">Σ Incidencias:</span><span class="ps-v mono" id="psVal">0.00</span><span class="ps-l" id="psNote" style="margin-left:6px">(debe sumar 100%)</span></div>
     </div>
     <div style="margin-top:18px"><label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:10px">Gatillos de Redeterminación <span class="tip" data-t="El primero que se cumpla gatilla la actualización">?</span></label>
       <div class="trig-row"><div class="trig-letter">A</div><div class="trig-desc">Actualización de Mano de Obra según CCT asociado al contrato</div><div class="trig-input"><label class="tg"><input type="checkbox" id="f_trigA" onchange="document.getElementById('l_trigA').textContent=this.checked?'Sí':'No'"><span class="sl"></span></label><span class="tl" id="l_trigA">No</span></div></div>
@@ -712,11 +712,11 @@
 
 <script src="src/js/01-config.js?v=109"></script>
 <script src="src/js/02-supabase-auth.js?v=108"></script>
-<script src="src/js/03-utils.js?v=123"></script>
+<script src="src/js/03-utils.js?v=124"></script>
 <script src="src/js/04-contracts.js?v=145"></script>
 <script src="src/js/05-indices.js?v=130"></script>
 <script src="src/js/06-licit-prov.js?v=110"></script>
-<script src="src/js/07-polynomial.js?v=119"></script>
+<script src="src/js/07-polynomial.js?v=120"></script>
 <script src="src/js/08-dashboard.js?v=108"></script>
 
 
@@ -738,7 +738,7 @@
 
 <!-- PATCH_AVE_TARIFARIOS_PERIODO_V1 -->
 
-<script src="src/js/09-patch.js?v=108"></script>
+<script src="src/js/09-patch.js?v=109"></script>
 <script src="src/js/10-legales.js?v=1"></script>
 <script src="src/js/11-word-gen.js?v=1"></script>
 

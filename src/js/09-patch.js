@@ -1598,7 +1598,7 @@ function calcularKo() {
     '<thead><tr style="border-bottom:1px solid var(--g300);"><th style="text-align:left;padding:6px;">Rubro</th><th style="text-align:left;padding:6px;">Índice</th><th style="text-align:right;padding:6px;">Inc.</th><th style="text-align:right;padding:6px;">Var%</th><th style="text-align:right;padding:6px;">Ko</th></tr></thead>' +
     '<tbody>' +
     breakdown.map(function(b) {
-      return '<tr style="border-bottom:1px solid var(--g100);"><td style="padding:6px;">' + b.rubro + '</td><td style="padding:6px;font-size:10px;">' + b.indice + '</td><td style="text-align:right;padding:6px;">' + b.incidencia.toFixed(2) + '</td><td style="text-align:right;padding:6px;">' + b.variacion + '</td><td style="text-align:right;padding:6px;font-weight:600;">' + b.ko + '</td></tr>';
+      return '<tr style="border-bottom:1px solid var(--g100);"><td style="padding:6px;">' + b.rubro + '</td><td style="padding:6px;font-size:10px;">' + b.indice + '</td><td style="text-align:right;padding:6px;">' + (b.incidencia * 100).toFixed(1) + '%</td><td style="text-align:right;padding:6px;">' + b.variacion + '</td><td style="text-align:right;padding:6px;font-weight:600;">' + b.ko + '</td></tr>';
     }).join('') +
     '</tbody></table>';
   

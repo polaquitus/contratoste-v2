@@ -291,12 +291,12 @@ function go(v){
 // POLY
 function buildPoly(){
   let h='';for(let i=1;i<=5;i++){let o='<option value="">— Sin asignar —</option>';for(const[c,its]of Object.entries(IDX)){o+=`<optgroup label="${c}">`;its.forEach(it=>o+=`<option value="${it}">${it}</option>`);o+='</optgroup>';}
-  h+=`<div class="poly-row"><div class="pn">${i}</div><div class="fgrp"><label>Índice ${i}</label><select id="p_i${i}" onchange="calcP()">${o}</select></div><div class="fgrp"><label>Incidencia</label><input type="number" id="p_n${i}" placeholder="0.00" step="0.01" min="0" max="1" oninput="calcP()"></div><div class="fgrp"><label>Base</label><input type="month" id="p_b${i}"></div></div>`;}
+  h+=`<div class="poly-row"><div class="pn">${i}</div><div class="fgrp"><label>Índice ${i}</label><select id="p_i${i}" onchange="calcP()">${o}</select></div><div class="fgrp"><label>Incidencia (%)</label><input type="number" id="p_n${i}" placeholder="0.00" step="0.01" min="0" max="100" oninput="calcP()"></div><div class="fgrp"><label>Base</label><input type="month" id="p_b${i}"></div></div>`;}
   document.getElementById('polyBox').innerHTML=h;
 }
-function calcP(){let s=0;for(let i=1;i<=5;i++)s+=parseFloat(document.getElementById('p_n'+i).value)||0;const e=document.getElementById('psVal');e.textContent=s.toFixed(2);const ok=Math.abs(s-1)<.005;e.className='ps-v mono '+(ok?'ok':'bad');document.getElementById('psNote').textContent=ok?'✓ OK':'(debe sumar 1.00)';}
-function getPoly(){let a=[];for(let i=1;i<=5;i++)a.push({idx:document.getElementById('p_i'+i).value,inc:parseFloat(document.getElementById('p_n'+i).value)||0,base:document.getElementById('p_b'+i).value||''});return a;}
-function setPoly(a){if(!a)return;a.forEach((p,i)=>{if(i<5){document.getElementById('p_i'+(i+1)).value=p.idx||'';document.getElementById('p_n'+(i+1)).value=p.inc||'';document.getElementById('p_b'+(i+1)).value=p.base||'';}});calcP();}
+function calcP(){let s=0;for(let i=1;i<=5;i++)s+=parseFloat(document.getElementById('p_n'+i).value)||0;const e=document.getElementById('psVal');e.textContent=s.toFixed(2);const ok=Math.abs(s-100)<.5;e.className='ps-v mono '+(ok?'ok':'bad');document.getElementById('psNote').textContent=ok?'✓ OK':'(debe sumar 100%)';return ok;}
+function getPoly(){let a=[];for(let i=1;i<=5;i++){const raw=parseFloat(document.getElementById('p_n'+i).value)||0;a.push({idx:document.getElementById('p_i'+i).value,inc:raw/100,base:document.getElementById('p_b'+i).value||''});}return a;}
+function setPoly(a){if(!a)return;a.forEach((p,i)=>{if(i<5){document.getElementById('p_i'+(i+1)).value=p.idx||'';document.getElementById('p_n'+(i+1)).value=p.inc?(p.inc*100):'';document.getElementById('p_b'+(i+1)).value=p.base||'';}});calcP();}
 
 function onContrCh(){const v=gv('f_tcontr');document.getElementById('secRfq').classList.toggle('vis',v==='RFQ MAIL'||v==='RFQ ARIBA');document.getElementById('secAr').classList.toggle('vis',v==='RFQ ARIBA');}
 function onFueComiteToggle(){
@@ -444,6 +444,7 @@ async function guardar(){
   if(faxApiEl)faxApiEl.classList.toggle('err',document.getElementById('f_faxApiSent').checked&&!gv('f_faxApiNombre'));
   if(gv('f_ini')&&gv('f_fin')&&new Date(gv('f_fin'))<new Date(gv('f_ini'))){document.getElementById('f_fin').classList.add('err');er.push('Fecha Fin anterior a Inicio');}
   if(!editId&&gv('f_num')&&window.DB.find(c=>c.num===gv('f_num'))){document.getElementById('f_num').classList.add('err');er.push('N° de contrato ya existe');}
+  if(document.getElementById('f_hasPoly')?.checked&&!calcP()){document.getElementById('psVal').classList.add('err');er.push('Σ Incidencias de la fórmula polinómica debe sumar 100%');}
   if(er.length){
     // Show persistent error banner at top of form
     const banner=document.createElement('div');
