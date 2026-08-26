@@ -170,7 +170,6 @@ async function loginApp(){
     if(String(hash).toLowerCase() !== String(row.password_hash||'').toLowerCase()) throw new Error('Contraseña inválida');
     _APP_USER = {id:row.id || row.username, username:row.username};
     _APP_ROLE = (row.role || 'SIN_ROL').trim();
-    try{ sessionStorage.setItem('app_session', JSON.stringify({id:_APP_USER.id, username:_APP_USER.username, role:_APP_ROLE})); }catch(_e){}
     authUnlock();
     setRoleBadge();
     applyRolePermissions();
@@ -188,25 +187,12 @@ async function loginApp(){
 }
 async function requireLogin(){
   if(_APP_USER && _APP_ROLE){ setRoleBadge(); applyRolePermissions(); if(typeof applyPermissions==='function') applyPermissions(); authUnlock(); return true; }
-  try{
-    const raw=sessionStorage.getItem('app_session');
-    if(raw){
-      const s=JSON.parse(raw);
-      if(s && s.username && s.role){
-        _APP_USER={id:s.id||s.username, username:s.username};
-        _APP_ROLE=s.role;
-        setRoleBadge(); applyRolePermissions(); if(typeof applyPermissions==='function') applyPermissions(); authUnlock();
-        return true;
-      }
-    }
-  }catch(_e){}
   ensureLoginOverlay();
   return false;
 }
 function logoutApp(){
   _APP_USER = null;
   _APP_ROLE = null;
-  try{ sessionStorage.removeItem('app_session'); }catch(_e){}
   authLock();
   setRoleBadge();
   applyRolePermissions();
@@ -218,12 +204,7 @@ function logoutApp(){
   if(typeof toast==='function') toast('Sesión cerrada','ok');
 }
 document.addEventListener('DOMContentLoaded', function(){
-  // No re-bloquear si la sesión ya se rehidrató desde sessionStorage (la IIFE de
-  // initApp() al final de este archivo corre ANTES de este evento y ya pudo haber
-  // llamado authUnlock() — bloquear acá encima dejaría la UI trabada sin nada que
-  // la desbloquee de nuevo).
-  if(!_APP_USER) authLock();
-  setRoleBadge(); applyRolePermissions();
+  authLock(); setRoleBadge(); applyRolePermissions();
   /* ensureLoginOverlay handled by initApp IIFE */
 });
 
