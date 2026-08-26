@@ -237,7 +237,7 @@ function go(v){
     document.getElementById('vDet').classList.add('on');
     _navAct('list');
     t.innerHTML='📄 Detalle';
-    a.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-s" onclick="go('list')">← Lista</button><button class="btn btn-a btn-sm" onclick="openKoCalculator()">🧮 Calc Ko</button><button class="btn btn-p btn-sm" onclick="openDossier()">📘 Dossier HTML</button><button class="btn btn-p btn-sm" onclick="exportDossierXls()">📊 Dossier XLS</button><button class="btn btn-p btn-sm" onclick="generarWordCondiciones()">📄 Generar Word</button><button class="btn btn-s btn-sm" onclick="openPriceListImportPicker()">🤖 Importar Listas IA</button></div>`;
+    a.innerHTML=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-s" onclick="go('list')">← Lista</button><button class="btn btn-p btn-sm" onclick="openDossier()">📘 Dossier HTML</button><button class="btn btn-p btn-sm" onclick="generarWordCondiciones()">📄 Contract Draft</button></div>`;
     renderDet();
     window.scrollTo({top:0,behavior:'smooth'});
   }
