@@ -718,7 +718,7 @@ function renderDet(){
     });
     document.getElementById('detCard').innerHTML=`<div class="card">
       <div class="det-h">
-        <div><h2>${esc(c.num)} — ${esc(c.cont)}</h2><div class="ds">${esc(c.det||'')} · ${esc(c.tipo||'')} · ${esc(c.tcontr||'')}</div></div>
+        <div><h2>${esc(c.num||'(pendiente de SAP)')} — ${esc(c.cont)}</h2><div class="ds">${esc(c.det||'')} · ${esc(c.tipo||'')} · ${esc(c.tcontr||'')}</div></div>
         <div style="display:flex;gap:8px;align-items:center">
           <span class="bdg ${isA?'act':'exp'}" style="font-size:12px;padding:5px 14px">● ${isA?'ACTIVO':'VENCIDO'}</span>
           <button class="btn btn-sm btn-a" onclick="window.copyContractAsTemplate()" title="Duplicar como template">📋 Duplicar</button>
@@ -838,7 +838,7 @@ function renderDet(){
         </div>`;
       })():''}
       <div class="section-box">
-        <h3>🖥️ Integración SAP <span class="tcnt">${c.sapContractNo?'Contrato creado':'Pendiente'}</span></h3>
+        <h3>🖥️ Integración SAP <span class="tcnt">${c.num?'Contrato creado':'Pendiente'}</span></h3>
         <div class="dossier-grid top" style="grid-template-columns:1fr 1fr">
           <div>
             <div class="dr"><span>Vendor</span><span class="dv">${esc(c.sapVendor||'—')}</span></div>
@@ -854,8 +854,8 @@ function renderDet(){
         </div>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-p btn-sm" onclick="exportContratoSap('${c.id}')">📥 Exportar CSV para SAP</button>
-          <span style="font-size:12px;color:var(--g600c)">N° Contrato SAP:</span>
-          <input type="text" id="f_sapContractNoDet" value="${esc(c.sapContractNo||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
+          <span style="font-size:12px;color:var(--g600c)">N° Contrato:</span>
+          <input type="text" id="f_sapContractNoDet" value="${esc(c.num||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
           <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')">💾 Guardar</button>
         </div>
       </div>
@@ -1693,13 +1693,15 @@ function exportContratoSap(id){
 async function guardarSapContractNo(id){
   const c=window.DB.find(x=>x.id===id);if(!c){toast('Contrato no encontrado','er');return;}
   const val=(document.getElementById('f_sapContractNoDet')?.value||'').trim();
-  c.sapContractNo=val||null;
+  if(val&&window.DB.some(x=>x.id!==id&&x.num===val)){toast('Ese N° de contrato ya está usado en otro registro','er');return;}
+  c.num=val||null;
   c.updatedAt=new Date().toISOString();
   try{
     if(SB_OK)await sbUpsertItem('contratos',c);
     else localStorage.setItem('cta_v7',JSON.stringify(window.DB));
-    toast(val?'N° de contrato SAP guardado':'N° de contrato SAP borrado','ok');
-    renderDet();
+    toast(val?'N° de contrato guardado':'N° de contrato borrado','ok');
+    renderList();renderDet();
+    if(typeof window.initFuzzySearch==='function')window.initFuzzySearch();
   }catch(e){
     toast('Error al guardar: '+e.message,'er');
   }

@@ -372,7 +372,7 @@ async function guardar(){
   // Remove any existing error banner
   document.getElementById('formErrBanner')?.remove();
   const R=[
-    ['f_num','N° de Contrato'],['f_cont','Contratista'],['f_tipo','Tipo de Contrato'],
+    ['f_cont','Contratista'],['f_tipo','Tipo de Contrato'],
     ['f_mon','Moneda'],['f_monto','Monto Inicial'],['f_ini','Fecha Inicio'],
     ['f_fin','Fecha Fin'],['f_resp','Responsable'],['f_btar','Base Tarifas (mes/año)'],
     ['f_det','Detalle del Servicio'],['f_tcontr','Tipo de Contratación'],
