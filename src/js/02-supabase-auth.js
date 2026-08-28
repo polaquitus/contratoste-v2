@@ -254,15 +254,6 @@ async function initApp(__fromLogin) {
   }
   idxMergeOfficialSeeds();
   localStorage.setItem('idx_v2', JSON.stringify(IDX_STORE));
-  try {
-    showLoader('Cargando licitaciones...');
-    LICIT_DB = await sbLoadTable('licitaciones');
-    anyOk=true;
-  } catch(e) {
-    console.warn('licitaciones load error:', e);
-    try{LICIT_DB=JSON.parse(localStorage.getItem('licit_v1'))||[];}catch(ex){LICIT_DB=[];}
-    anyFailed=true;
-  }
   // Si al menos una tabla respondió, Supabase está alcanzable: los guardados posteriores
   // siguen intentando ir ahí (cada uno con su propio manejo de error) en vez de degradar
   // toda la sesión a modo local por el fallo de una sola tabla.
@@ -284,7 +275,6 @@ async function initApp(__fromLogin) {
   window.initFuzzySearch();
   window.loadSavedFilters();
   window.renderSavedFiltersDropdown();
-  window.updateAlertBadge(); // Actualizar badge alertas
   console.log('[FASE 1] Features initialized:', {
     shortcuts: typeof window.initKeyboardShortcuts === 'function',
     fuzzy: typeof window.initFuzzySearch === 'function',
@@ -295,7 +285,6 @@ async function initApp(__fromLogin) {
 
 // ─── PUBLIC API (called throughout app) ──────
 function loadIdx() { /* handled by initApp */ }
-function loadLicit() { /* handled by initApp */ }
 async function loadProv() {
   // Try Supabase first
   if (SB_OK) {
@@ -381,32 +370,7 @@ async function saveMe2n() {
 
 // saveIdx defined in IDX module below — always mirrors localStorage + Supabase when available
 
-async function saveLicit() {
-  if (!SB_OK) { localStorage.setItem('licit_v1', JSON.stringify(LICIT_DB)); return; }
-  const last = LICIT_DB[LICIT_DB.length-1];
-  if (last) await sbUpsertItem('licitaciones', last);
-}
-
-async function saveProv() {
-  localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-  localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
-  if (!SB_OK) return;
-  await sbReplaceContratistas();
-}
-
-async function sbReplaceContratistas() {
-  if (!SB_OK) return;
-  const clean = (PROV_DB||[]).map(p=>{ const x={...p}; delete x.__sbId; return {datos: JSON.stringify(x)}; });
-  try { await sbFetch('contratistas', 'DELETE', null, '?id=not.is.null'); } catch(e) { console.warn('DELETE contratistas', e); }
-  if (!clean.length) return;
-  const res = await sbFetch('contratistas', 'POST', clean);
-  if (Array.isArray(res)) res.forEach((r,i)=>{ if(PROV_DB[i]) PROV_DB[i].__sbId = r.id; });
-  localStorage.setItem('contr_v1', JSON.stringify(PROV_DB));
-  localStorage.setItem('prov_v1', JSON.stringify(PROV_DB));
-}
-
-
-function updNav(){document.getElementById('cnt').textContent=window.DB.length;document.getElementById('poCnt').textContent=Object.keys(ME2N).length;document.getElementById('provCnt').textContent=PROV_DB.length;}
+function updNav(){document.getElementById('cnt').textContent=window.DB.length;document.getElementById('poCnt').textContent=Object.keys(ME2N).length;}
 
 (function(){ initApp(); })();
 

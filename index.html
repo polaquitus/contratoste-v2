@@ -12,8 +12,6 @@
 <meta http-equiv="Expires" content="0">
 <link rel="stylesheet" href="src/css/main.css?v=112">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="app">
@@ -33,22 +31,16 @@
   <div class="sb-env">
     <span class="dot"></span>
     <span class="lab"><strong>Producción</strong> · sincronizado</span>
-    <span class="ver" id="sbVerBadge">v183</span>
+    <span class="ver" id="sbVerBadge">v3-it</span>
   </div>
   <!-- Nav -->
   <nav class="sb-nav">
     <div class="sb-sec">Módulos</div>
-    <a class="nv" data-mod="dashboard" onclick="go('dashboard')" href="#"><span class="ni">📊</span><span class="lbl">Dashboard</span></a>
     <a class="nv act" data-mod="list" onclick="go('list')" href="#"><span class="ni">📋</span><span class="lbl">Contratos</span><span class="badge" id="cnt">0</span></a>
-    <a class="nv" data-mod="timeline" onclick="go('timeline')" href="#"><span class="ni">📅</span><span class="lbl">Timeline</span></a>
-    <a class="nv" data-mod="alertas" onclick="go('alertas')" href="#"><span class="ni">🔔</span><span class="lbl">Alertas</span><span class="badge badge-danger" id="alertCnt" style="display:none;">0</span></a>
     <a class="nv" data-mod="form" onclick="go('form')" href="#"><span class="ni">➕</span><span class="lbl">Nuevo Contrato</span></a>
     <a class="nv" data-mod="me2n" onclick="go('me2n')" href="#"><span class="ni">🛒</span><span class="lbl">Purchase Orders</span><span class="badge" id="poCnt">0</span></a>
     <div class="sb-sec">Módulos adicionales</div>
     <a class="nv" data-mod="idx" onclick="go('idx')" href="#"><span class="ni">📈</span><span class="lbl">Índices</span></a>
-    <a class="nv" data-mod="forecast" onclick="go('forecast')" href="#"><span class="ni">📊</span><span class="lbl">Proyección</span></a>
-    <a class="nv" data-mod="licit" onclick="go('licit')" href="#"><span class="ni">📑</span><span class="lbl">Licitaciones</span></a>
-    <a class="nv" data-mod="prov" onclick="go('prov')" href="#"><span class="ni">🏢</span><span class="lbl">Proveedores</span><span class="badge" id="provCnt">0</span></a>
     <div class="sb-sec">Administración</div>
     <a class="nv" data-mod="users" id="navUsersModule" href="#" onclick="event.preventDefault();if(typeof UsersAdmin!=='undefined'&&typeof UsersAdmin.show==='function')UsersAdmin.show()"><span class="ni">👥</span><span class="lbl">Usuarios</span></a>
   </nav>
@@ -69,7 +61,7 @@
 <main class="mn">
 <header class="tb">
   <div class="tb-left">
-    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v183-enm-concepto-periodo</span></h1>
+    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v3-it-handoff (Contratos · Índices · Purchase Orders · Usuarios · Legales)</span></h1>
   </div>
   <div class="tba" id="pgA">
     <div style="position:relative;width:100%;max-width:360px;">
@@ -87,152 +79,7 @@
 </header>
 <div class="ct">
 
-<!-- DASHBOARD -->
-<div id="vDashboard" class="vw">
-  <div class="card">
-    <div class="thdr">
-      <h2>📊 Dashboard Ejecutivo</h2>
-    </div>
 
-    <!-- Executive Action Items -->
-    <div id="execSection" style="padding:20px;background:#f8fafc;border-bottom:1px solid var(--g200)"></div>
-
-    <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px;background:var(--g50);">
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7;">📋</div>
-        <div class="kpi-value" id="kpiActivos">0</div>
-        <div class="kpi-label" id="kpiActivosLbl">Contratos Activos</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#dcfce7;color:#16a34a;">💰</div>
-        <div class="kpi-value" id="kpiMonto">$0</div>
-        <div class="kpi-label">Monto Total Activo</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#fef3c7;color:#ca8a04;">⏰</div>
-        <div class="kpi-value" id="kpiProxVencer">0</div>
-        <div class="kpi-label">Vencen en 30 días</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon" style="background:#fee2e2;color:#dc2626;">🔔</div>
-        <div class="kpi-value" id="kpiAlertas">0</div>
-        <div class="kpi-label">Alertas Críticas</div>
-      </div>
-    </div>
-    
-    <!-- Control TC -->
-    <div style="padding:12px 20px;background:#fef3c7;border-bottom:1px solid #fcd34d;display:flex;align-items:center;gap:12px;">
-      <span style="font-size:13px;font-weight:600;color:#92400e;">💱 Tipo de Cambio USD:</span>
-      <input type="number" id="tcInput" value="1050" step="10" min="1" style="width:100px;padding:4px 8px;border:1px solid #fbbf24;border-radius:4px;font-weight:600;" oninput="renderDashboard()">
-      <span style="font-size:12px;color:#92400e;">ARS/USD (ajustar manualmente hasta cargar datos en Índices)</span>
-    </div>
-    
-    <!-- Gráficos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px;">
-      <!-- Distribución por Dominio -->
-      <div style="background:var(--w);border:1px solid var(--g200);border-radius:var(--rad);padding:20px;">
-        <h3 style="margin:0 0 16px 0;font-size:15px;font-weight:700;color:var(--g900);">Distribución por Dominio</h3>
-        <canvas id="chartDominio" style="max-height:300px;"></canvas>
-      </div>
-      
-      <!-- Top 10 Proveedores -->
-      <div style="background:var(--w);border:1px solid var(--g200);border-radius:var(--rad);padding:20px;">
-        <h3 style="margin:0 0 16px 0;font-size:15px;font-weight:700;color:var(--g900);">Top 10 Proveedores por Monto</h3>
-        <canvas id="chartProveedores" style="max-height:300px;"></canvas>
-      </div>
-    </div>
-    
-    <!-- Mapa Geoespacial -->
-    <div style="padding:20px;background:var(--w);border-top:1px solid var(--g200);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--g900);">🗺️ Distribución Geográfica de Contratos</h3>
-        <span style="font-size:12px;color:var(--g500)">Clic en un nodo para filtrar por asset</span>
-      </div>
-      <div>
-        <div id="dashMap" style="height:520px;border-radius:var(--rad);border:1px solid var(--g200);overflow:hidden;"></div>
-        <div id="dashMapLegend" style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;"></div>
-      </div>
-    </div>
-
-    <!-- Vencimientos Próximos -->
-    <div style="padding:20px;background:var(--w);border-top:1px solid var(--g200);">
-      <h3 style="margin:0 0 16px 0;font-size:15px;font-weight:700;color:var(--g900);">⏰ Próximos Vencimientos (90 días)</h3>
-      <div id="proximosVencimientos"></div>
-    </div>
-
-    <!-- Cola de acciones ejecutivas -->
-    <div id="execQueueSection" style="padding:20px;background:#f8fafc;border-top:1px solid var(--g200)"></div>
-  </div>
-</div>
-
-<!-- FORECAST -->
-<div id="vForecast" class="vw">
-  <div class="card">
-    <!-- Controls -->
-    <div style="display:flex;flex-wrap:wrap;gap:14px;padding:18px 20px;background:var(--g50);border-bottom:1px solid var(--g200);align-items:flex-end">
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.4px">Período de análisis</label>
-        <select id="fcLookback" onchange="renderForecast()" style="font-family:inherit;font-size:13px;padding:7px 10px;border:1.5px solid var(--g300);border-radius:6px;background:var(--w);color:var(--g900)">
-          <option value="6">Últimos 6 meses</option>
-          <option value="12" selected>Últimos 12 meses</option>
-          <option value="18">Últimos 18 meses</option>
-          <option value="24">Últimos 24 meses</option>
-        </select>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.4px">Horizonte</label>
-        <select id="fcHorizon" onchange="renderForecast()" style="font-family:inherit;font-size:13px;padding:7px 10px;border:1.5px solid var(--g300);border-radius:6px;background:var(--w);color:var(--g900)">
-          <option value="6">6 meses</option>
-          <option value="12" selected>12 meses</option>
-          <option value="18">18 meses</option>
-        </select>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.4px">TC USD/ARS</label>
-        <input type="number" id="fcTC" value="1050" step="10" min="1" oninput="renderForecast()" style="font-family:inherit;font-size:13px;padding:7px 10px;border:1.5px solid var(--g300);border-radius:6px;background:var(--w);color:var(--g900);width:110px">
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:11px;font-weight:600;color:var(--g700);text-transform:uppercase;letter-spacing:.4px">Detalle por contrato a</label>
-        <select id="fcBreakdownHorizon" onchange="renderForecastBreakdown()" style="font-family:inherit;font-size:13px;padding:7px 10px;border:1.5px solid var(--g300);border-radius:6px;background:var(--w);color:var(--g900)">
-          <option value="3">+3 meses</option>
-          <option value="6" selected>+6 meses</option>
-          <option value="12">+12 meses</option>
-          <option value="18">+18 meses</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Index rates badge bar -->
-    <div id="fcRatesBar" style="padding:12px 20px;background:var(--w);border-bottom:1px solid var(--g200);display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px">
-      <span style="color:var(--g500);font-weight:600">Tasas calculadas:</span>
-    </div>
-
-    <!-- Chart -->
-    <div style="padding:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--g900)">📈 Proyección de Monto Total Activo (ARS)</h3>
-        <div id="fcKpiBand" style="display:flex;gap:12px;font-size:12px"></div>
-      </div>
-      <div style="background:var(--w);border:1px solid var(--g200);border-radius:var(--radl);padding:20px">
-        <div id="fcChartMsg" style="display:none;text-align:center;padding:40px;font-size:13px;color:var(--g500);font-style:italic"></div>
-        <canvas id="forecastChart" style="height:380px;display:none"></canvas>
-      </div>
-    </div>
-
-    <!-- Scenario summary table -->
-    <div style="padding:0 20px 20px">
-      <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:var(--g900)">📋 Resumen por Escenario</h3>
-      <div id="forecastTable" style="background:var(--w);border:1px solid var(--g200);border-radius:var(--radl);overflow:hidden"></div>
-    </div>
-
-    <!-- Contract breakdown -->
-    <div style="padding:0 20px 28px">
-      <h3 style="margin:0 0 12px;font-size:14px;font-weight:700;color:var(--g900)">🏷️ Impacto por Contrato <span style="font-size:12px;font-weight:400;color:var(--g500)">(ordenado por mayor incremento proyectado — escenario fórmula polinómica)</span></h3>
-      <div id="forecastBreakdown" style="background:var(--w);border:1px solid var(--g200);border-radius:var(--radl);overflow:hidden"></div>
-    </div>
-  </div>
-</div>
 
 <!-- LIST -->
 <div id="vList" class="vw on">
@@ -262,193 +109,7 @@
   </div>
 </div>
 
-<!-- TIMELINE -->
-<div id="vTimeline" class="vw">
-  <div class="card">
-    <div class="thdr">
-      <h2>Timeline de Contratos</h2>
-      <span class="tcnt" id="tlCnt">0</span>
-    </div>
-    <div class="tfl">
-      <select id="tlEst" onchange="renderTimeline()">
-        <option value="">Todos</option>
-        <option value="ACTIVO">Activos</option>
-        <option value="VENCIDO">Vencidos</option>
-        <option value="PROXIMO">Próximos</option>
-      </select>
-      <select id="tlAsset" onchange="renderTimeline()" style="max-width:120px">
-        <option value="">Asset</option>
-        <option>NQN</option>
-        <option>TDF</option>
-        <option>NQN + TDF</option>
-      </select>
-      <select id="tlDom" onchange="renderTimeline()" style="max-width:120px">
-        <option value="">Dominio</option>
-        <option value="B&GS">B&GS</option>
-        <option value="EDL">EDL</option>
-        <option value="P&P">P&P</option>
-        <option value="HSE">HSE</option>
-        <option value="FIN">FIN</option>
-        <option value="HR">HR</option>
-        <option value="IT">IT</option>
-        <option value="LEGAL">LEGAL</option>
-        <option value="OPS">OPS</option>
-        <option value="OTHER">OTHER</option>
-      </select>
-      <select id="tlResp" onchange="renderTimeline()" style="max-width:180px">
-        <option value="">Responsable</option>
-        <option>Adrian OBINO</option>
-        <option>Alejo Nicolas CORDOBA</option>
-        <option>Ana Chiquinquira LEAÑEZ PERNALETE</option>
-        <option>Astrid Belen TERRIZZANO</option>
-        <option>Barbara Camila ALVAREZ OYARZO</option>
-        <option>Emilio Sebastian SAPORITO</option>
-        <option>Eugenia FERNANDEZ BOTTARO</option>
-        <option>Eugenia FERNANDEZ PUENTE</option>
-        <option>Fabiana Alejandra DI TATA</option>
-        <option>Federico Claudio VAZQUEZ FERNANDEZ</option>
-        <option>Fernando Javier PUENTES GALLY</option>
-        <option>Flavia SEGOVIA</option>
-        <option>Francisco Javier CACERES DIAZ</option>
-        <option>Gaston CORSO</option>
-        <option>Joaquin DELLA VEDOVA</option>
-        <option>Maria Silvia TRAVERSO</option>
-        <option>Maria Sol LEONARDIS</option>
-        <option>Martín ZALAZAR</option>
-        <option>Mauro ELIAS</option>
-        <option>Mauro Ivo DI CALOGERO</option>
-        <option>SEBASTIAN PEREZ PERUGORRIA</option>
-        <option>SERGIO CAPECE</option>
-        <option>Santiago Hernan SOTO</option>
-        <option>Sebastian Matias PARODI</option>
-        <option>Tamara Denise MADERA</option>
-        <option>Yanel DOMINGUEZ</option>
-      </select>
-      <button class="btn btn-s btn-sm" onclick="clearTimelineFilters()">🧹 Limpiar</button>
-    </div>
-    <div style="padding:20px;background:var(--w);">
-      <div style="margin-bottom:16px;display:flex;gap:20px;align-items:center;">
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="width:16px;height:16px;background:#3b82f6;border-radius:3px;"></div>
-          <span style="font-size:12px;color:var(--g700);">Próximo</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="width:16px;height:16px;background:#10b981;border-radius:3px;"></div>
-          <span style="font-size:12px;color:var(--g700);">Activo</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="width:16px;height:16px;background:#eab308;border-radius:3px;"></div>
-          <span style="font-size:12px;color:var(--g700);">Vence &lt;6 meses</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="width:16px;height:16px;background:#f97316;border-radius:3px;"></div>
-          <span style="font-size:12px;color:var(--g700);">Vence &lt;3 meses</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <div style="width:16px;height:16px;background:#6b7280;border-radius:3px;"></div>
-          <span style="font-size:12px;color:var(--g700);">Vencido</span>
-        </div>
-      </div>
-      <div id="timelineContainer" style="position:relative;overflow:auto;max-height:calc(100vh - 280px);border:1px solid var(--g200);border-radius:var(--rad);background:var(--g50);">
-        <canvas id="timelineCanvas"></canvas>
-      </div>
-      <div id="timelineTooltip" style="position:absolute;display:none;background:var(--w);border:1px solid var(--g300);border-radius:var(--rads);padding:10px 12px;box-shadow:var(--shm);font-size:12px;pointer-events:none;z-index:1000;"></div>
-    </div>
-  </div>
-</div>
 
-<!-- ALERTAS -->
-<div id="vAlertas" class="vw">
-  <div class="card">
-    <div class="thdr">
-      <h2>🔔 Alertas del Sistema</h2>
-      <span class="tcnt" id="alertTotal">0</span>
-    </div>
-    
-    <!-- Filtros -->
-    <div class="tfl">
-      <select id="alertAsset" onchange="renderAlertas()" style="max-width:120px">
-        <option value="">Asset</option>
-        <option>NQN</option>
-        <option>TDF</option>
-        <option>NQN + TDF</option>
-      </select>
-      <select id="alertDom" onchange="renderAlertas()" style="max-width:120px">
-        <option value="">Dominio</option>
-        <option value="B&GS">B&GS</option>
-        <option value="EDL">EDL</option>
-        <option value="P&P">P&P</option>
-        <option value="HSE">HSE</option>
-        <option value="FIN">FIN</option>
-        <option value="HR">HR</option>
-        <option value="IT">IT</option>
-        <option value="LEGAL">LEGAL</option>
-        <option value="OPS">OPS</option>
-        <option value="OTHER">OTHER</option>
-      </select>
-      <select id="alertResp" onchange="renderAlertas()" style="max-width:180px">
-        <option value="">Responsable</option>
-        <option>Adrian OBINO</option>
-        <option>Alejo Nicolas CORDOBA</option>
-        <option>Ana Chiquinquira LEAÑEZ PERNALETE</option>
-        <option>Astrid Belen TERRIZZANO</option>
-        <option>Barbara Camila ALVAREZ OYARZO</option>
-        <option>Emilio Sebastian SAPORITO</option>
-        <option>Eugenia FERNANDEZ BOTTARO</option>
-        <option>Eugenia FERNANDEZ PUENTE</option>
-        <option>Fabiana Alejandra DI TATA</option>
-        <option>Federico Claudio VAZQUEZ FERNANDEZ</option>
-        <option>Fernando Javier PUENTES GALLY</option>
-        <option>Flavia SEGOVIA</option>
-        <option>Francisco Javier CACERES DIAZ</option>
-        <option>Gaston CORSO</option>
-        <option>Joaquin DELLA VEDOVA</option>
-        <option>Maria Silvia TRAVERSO</option>
-        <option>Maria Sol LEONARDIS</option>
-        <option>Martín ZALAZAR</option>
-        <option>Mauro ELIAS</option>
-        <option>Mauro Ivo DI CALOGERO</option>
-        <option>SEBASTIAN PEREZ PERUGORRIA</option>
-        <option>SERGIO CAPECE</option>
-        <option>Santiago Hernan SOTO</option>
-        <option>Sebastian Matias PARODI</option>
-        <option>Tamara Denise MADERA</option>
-        <option>Yanel DOMINGUEZ</option>
-      </select>
-      <button class="btn btn-s btn-sm" onclick="clearAlertFilters()">🧹 Limpiar</button>
-    </div>
-    
-    <!-- Configuración -->
-    <div style="padding:16px 18px;background:var(--g50);border-bottom:1px solid var(--g200);">
-      <details style="cursor:pointer;">
-        <summary style="font-weight:600;font-size:12px;color:var(--g700);text-transform:uppercase;letter-spacing:.5px;">⚙️ Configuración de Umbrales</summary>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;">
-          <div>
-            <label style="display:block;font-size:11px;font-weight:600;color:var(--g600c);margin-bottom:4px;">🔴 Crítico (días)</label>
-            <input type="number" id="alertDiasCritico" value="30" min="1" max="90" style="width:100%;padding:6px 8px;font-size:12px;" onchange="saveAlertConfig()">
-          </div>
-          <div>
-            <label style="display:block;font-size:11px;font-weight:600;color:var(--g600c);margin-bottom:4px;">🟡 Advertencia (días)</label>
-            <input type="number" id="alertDiasAdvertencia" value="60" min="1" max="90" style="width:100%;padding:6px 8px;font-size:12px;" onchange="saveAlertConfig()">
-          </div>
-          <div>
-            <label style="display:block;font-size:11px;font-weight:600;color:var(--g600c);margin-bottom:4px;">🟢 Info (días)</label>
-            <input type="number" id="alertDiasInfo" value="90" min="1" max="180" style="width:100%;padding:6px 8px;font-size:12px;" onchange="saveAlertConfig()">
-          </div>
-        </div>
-        <div style="margin-top:12px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--g700);">
-            <input type="checkbox" id="alertMostrarSinPoly" onchange="saveAlertConfig(); renderAlertas();">
-            <span>Mostrar contratos sin fórmula polinómica (462 contratos)</span>
-          </label>
-        </div>
-      </details>
-    </div>
-    
-    <!-- Lista de alertas -->
-    <div id="alertasContainer"></div>
-  </div>
-</div>
 
 <!-- FORM -->
 <div id="vForm" class="vw">
@@ -685,24 +346,7 @@
   </div>
 </div>
 
-<!-- ══ LICITACIONES VIEW ════════════════════════════════════════════════ -->
-<div id="vLicit" class="vw">
-  <div id="licitList"></div>
-  <div id="licitDet" style="display:none"></div>
-  <!-- Modal -->
-  <div id="licitModalBack" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center">
-    <div id="licitModalBox" style="background:var(--w);border-radius:var(--radl);box-shadow:0 20px 60px rgba(0,0,0,.3);width:680px;max-width:96vw;max-height:94vh;overflow-y:auto"></div>
-  </div>
-</div>
 
-<!-- ══ PROVEEDORES VIEW ═══════════════════════════════════════════════ -->
-<div id="vProv" class="vw">
-  <div id="provList"></div>
-  <div id="provDet" style="display:none"></div>
-  <div id="provModalBack" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center">
-    <div id="provModalBox" style="background:var(--w);border-radius:var(--radl);box-shadow:0 20px 60px rgba(0,0,0,.3);width:640px;max-width:96vw;max-height:94vh;overflow-y:auto"></div>
-  </div>
-</div>
 </div></main></div>
 <div class="toast" id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -743,43 +387,6 @@
 <script src="src/js/11-word-gen.js?v=1"></script>
 
 
-<!-- MODAL CALCULADORA KO -->
-<div id="koCalcModal" class="modal">
-  <div class="modal-content" style="max-width:600px;">
-    <div class="modal-header">
-      <h2>🧮 Calculadora Ko</h2>
-      <button class="modal-close" onclick="closeKoCalc()">×</button>
-    </div>
-    <div class="modal-body" style="padding:24px;">
-      <div style="display:grid;gap:16px;">
-        <div>
-          <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Contrato</label>
-          <select id="koContrato" style="width:100%;">
-            <option value="">Seleccionar contrato...</option>
-          </select>
-        </div>
-        <div>
-          <label style="display:block;font-weight:600;margin-bottom:6px;font-size:13px;">Mes de Evaluación</label>
-          <input type="month" id="koMes" style="width:100%;">
-        </div>
-        <button class="btn btn-p" onclick="calcularKo()" style="width:100%;">Calcular Ko</button>
-      </div>
-      
-      <div id="koResultado" style="display:none;margin-top:24px;padding:20px;background:var(--g50);border-radius:var(--rad);border:1px solid var(--g200);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <span style="font-weight:700;font-size:14px;color:var(--g700);">Resultado</span>
-          <div style="font-size:24px;font-weight:700;color:var(--p600);" id="koValor">-</div>
-        </div>
-        <div id="koBreakdown" style="font-size:12px;color:var(--g600c);"></div>
-      </div>
-      
-      <div id="koHistorial" style="margin-top:20px;">
-        <div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--g700);">Historial (últimos 5)</div>
-        <div id="koHistorialList" style="font-size:11px;color:var(--g600c);"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── Progress modal de actualización masiva de índices ── -->
 <div id="idxProgressModal" style="display:none">

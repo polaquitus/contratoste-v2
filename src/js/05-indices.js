@@ -1747,21 +1747,3 @@ function switchModalIdx(id){
   const note=document.getElementById('em_note');
   if(note&&def)note.placeholder='Ref: '+def.src+(def.srcLink?' — '+def.srcLink:'');
 }
-
-
-// ═══════════════════════════════════════════════════════════════════════
-//  LICITACIONES — Motor completo
-// ═══════════════════════════════════════════════════════════════════════
-// LICIT_DB: [{id, docAriba, titulo, tipo:'RFQ_ARIBA'|'RFQ_MAIL'|'DIRECTA',
-//   fechaApertura, contrato, estado:'EN_PROCESO'|'ADJUDICADA'|'DESIERTA',
-//   ganador, oferentes:[{nombre, aprobTec:bool, part2da:bool, doc2da}],
-//   items:[{id,tipo:'item'|'subtotal'|'seccion', desc, valores:{[ofrIdx]:number}}],
-//   adjuntos:[{name,data}], obs, createdAt}]
-let LICIT_DB=[];
-let _licitDet=null;
-
-function loadLicit(){try{LICIT_DB=JSON.parse(localStorage.getItem('licit_v1'))||[];}catch(e){LICIT_DB=[];}}
-function saveLicit(){localStorage.setItem('licit_v1',JSON.stringify(LICIT_DB));}
-(function(){loadLicit();})();
-
-// ── List view ──────────────────────────────────────────────────────────

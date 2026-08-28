@@ -172,17 +172,9 @@ function _navAct(mod){
   if(el) el.classList.add('act');
 }
 function go(v){
-  ['vList','vForm','vDet','vMe2n','vMe2nDet','vIdx','vLicit','vProv','vTimeline','vAlertas','vDashboard','vForecast'].forEach(id=>document.getElementById(id).classList.remove('on'));
+  ['vList','vForm','vDet','vMe2n','vMe2nDet','vIdx'].forEach(id=>document.getElementById(id).classList.remove('on'));
   const t=document.getElementById('pgT'),a=document.getElementById('pgA');
-  if(v==='dashboard'){
-    document.getElementById('vDashboard').classList.add('on');
-    _navAct('dashboard');
-    t.innerHTML='📊 Dashboard Ejecutivo';
-    a.innerHTML=`<button class="btn btn-s" onclick="go('list')">← Contratos</button>`;
-    renderDashboard();
-    window.scrollTo({top:0,behavior:'smooth'});
-  }
-  else if(v==='list'){
+  if(v==='list'){
     document.getElementById('vList').classList.add('on');
     _navAct('list');
     t.innerHTML='📋 Contratos <span class="bc" id="buildTag">v86-redesign</span>';
@@ -196,7 +188,6 @@ function go(v){
       >
       <div id="fuzzy-results" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--w);border-radius:var(--rad);box-shadow:var(--shm);max-height:400px;overflow-y:auto;z-index:999;border:1px solid var(--g200);"></div>
     </div>
-    <button class="btn btn-a btn-sm" onclick="window.openKoCalculator()">🧮 Calculadora Ko</button>
     <button class="btn btn-p" onclick="go('form')">➕ Nuevo</button>`;
     editId=null;
     resetForm();
@@ -207,23 +198,6 @@ function go(v){
     if (typeof window.initFuzzySearch === 'function') {
       window.initFuzzySearch();
     }
-  }
-  else if(v==='alertas'){
-    document.getElementById('vAlertas').classList.add('on');
-    _navAct('alertas');
-    t.innerHTML='🔔 Alertas del Sistema';
-    a.innerHTML=`<button class="btn btn-s" onclick="go('list')">← Volver a Lista</button>`;
-    loadAlertConfig();
-    renderAlertas();
-    window.scrollTo({top:0,behavior:'smooth'});
-  }
-  else if(v==='timeline'){
-    document.getElementById('vTimeline').classList.add('on');
-    _navAct('timeline');
-    t.innerHTML='📅 Timeline de Contratos';
-    a.innerHTML=`<button class="btn btn-s" onclick="go('list')">← Volver a Lista</button>`;
-    renderTimeline();
-    window.scrollTo({top:0,behavior:'smooth'});
   }
   else if(v==='form'){
     document.getElementById('vForm').classList.add('on');
@@ -257,20 +231,6 @@ function go(v){
     renderIdxView();
     initIdxChartSection();
   }
-  else if(v==='licit'){
-    document.getElementById('vLicit').classList.add('on');
-    _navAct('licit');
-    t.innerHTML='📋 Licitaciones';
-    a.innerHTML=`<button class="btn btn-p btn-sm" onclick="openLicitModal(null)">➕ Nueva Licitación</button>`;
-    renderLicit();
-  }
-  else if(v==='prov'){
-    document.getElementById('vProv').classList.add('on');
-    _navAct('prov');
-    t.innerHTML='🏢 Proveedores';
-    a.innerHTML=`<div style="display:flex;gap:8px"><button class="btn btn-s btn-sm" onclick="importProvModal()">📤 Importar SAP</button><button class="btn btn-s btn-sm" onclick="loadProv().then(function(){renderProv();toast(PROV_DB.length+' proveedores','ok');}).catch(function(e){toast('Error: '+e.message,'er');})">🔄 Recargar</button><button class="btn btn-p btn-sm" onclick="openProvModal(null)">➕ Nuevo Proveedor</button></div>`;
-    loadProv().then(function(){renderProv();}).catch(function(){renderProv();});
-  }
   else if(v==='me2ndet'){
     document.getElementById('vMe2nDet').classList.add('on');
     _navAct('me2n');
@@ -278,13 +238,6 @@ function go(v){
     a.innerHTML=`<button class="btn btn-s" onclick="go('me2n')">← Volver a ME2N</button>`;
     renderMe2nDet();
     window.scrollTo({top:0,behavior:'smooth'});
-  }
-  else if(v==='forecast'){
-    document.getElementById('vForecast').classList.add('on');
-    _navAct('forecast');
-    t.innerHTML='📈 Proyección Predictiva de Costos';
-    a.innerHTML=`<button class="btn btn-p btn-sm" onclick="renderForecast()">🔄 Recalcular</button>`;
-    renderForecast();
   }
 }
 

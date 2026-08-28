@@ -659,7 +659,7 @@
   }
 
   function hideAllViews(){
-    ['vList','vForm','vDet','vMe2n','vMe2nDet','vIdx','vLicit','vProv','vTimeline','vAlertas','vDashboard','vForecast','vUsersModule','vLegalesModule'].forEach(function(id){var el=q(id);if(el)el.classList.remove('on');});
+    ['vList','vForm','vDet','vMe2n','vMe2nDet','vIdx','vUsersModule','vLegalesModule'].forEach(function(id){var el=q(id);if(el)el.classList.remove('on');});
     document.querySelectorAll('.sb-nav .nv').forEach(function(n){n.classList.remove('act');});
   }
 
