@@ -566,7 +566,15 @@ async function guardar(){
   // Un contrato recién creado todavía no tiene N° (lo asigna SAP) — en vez de ir a
   // la lista, se va directo al Detalle, que es donde está el paso siguiente
   // ("Integración SAP": exportar el CSV y después pegar el N° de contrato).
-  if(wasNew){ window.detId=newId; go('detail'); }
+  if(wasNew){
+    window.detId=newId; go('detail');
+    // Descarga automática del CSV para SAP apenas se crea el contrato — solo si
+    // ya están los datos mínimos (Vendor/Material); si faltan, el botón sigue
+    // disponible en la sección Integración SAP para exportar cuando se completen.
+    if(c.sapVendor&&c.sapMaterial&&typeof exportContratoSap==='function'){
+      exportContratoSap(newId);
+    }
+  }
   else { go('list'); }
 
   // Actualizar fuzzy search cache

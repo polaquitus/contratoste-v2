@@ -855,8 +855,16 @@ function renderDet(){
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-p btn-sm" onclick="exportContratoSap('${c.id}')">📥 Exportar CSV para SAP</button>
           <span style="font-size:12px;color:var(--g600c)">N° Contrato:</span>
-          <input type="text" id="f_sapContractNoDet" value="${esc(c.num||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
-          <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')">💾 Guardar</button>
+          ${(()=>{
+            // Una vez asignado el N° de contrato real, solo OWNER/ADMIN pueden
+            // corregirlo — para el resto de los roles queda de solo lectura.
+            const isAdmin=['OWNER','ADMIN'].includes(String(typeof _APP_ROLE!=='undefined'?_APP_ROLE:'').toUpperCase());
+            if(c.num&&!isAdmin){
+              return `<span class="dv" style="font-family:monospace">${esc(c.num)}</span> <span style="font-size:11px;color:var(--g500)">(asignado — solo un admin puede cambiarlo)</span>`;
+            }
+            return `<input type="text" id="f_sapContractNoDet" value="${esc(c.num||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
+          <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')">💾 Guardar</button>`;
+          })()}
         </div>
       </div>
       <div class="section-box">
@@ -1691,6 +1699,8 @@ function exportContratoSap(id){
 }
 async function guardarSapContractNo(id){
   const c=window.DB.find(x=>x.id===id);if(!c){toast('Contrato no encontrado','er');return;}
+  const isAdmin=['OWNER','ADMIN'].includes(String(typeof _APP_ROLE!=='undefined'?_APP_ROLE:'').toUpperCase());
+  if(c.num&&!isAdmin){toast('El N° de contrato ya está asignado — solo un admin puede modificarlo','er');return;}
   const val=(document.getElementById('f_sapContractNoDet')?.value||'').trim();
   if(val&&window.DB.some(x=>x.id!==id&&x.num===val)){toast('Ese N° de contrato ya está usado en otro registro','er');return;}
   c.num=val||null;
