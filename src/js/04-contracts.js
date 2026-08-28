@@ -1552,6 +1552,7 @@ function editCont(id){const c=window.DB.find(x=>x.id===id);if(!c)return;document
   populateProvSelect();
   setTimeout(function(){
     document.getElementById('f_cont').value=c.cont||'';
+    if(typeof onContratistaChange==='function')onContratistaChange();
   },10);
   document.getElementById('f_num').value=c.num;
   document.getElementById('f_tipo').value=c.tipo||'';
@@ -1647,8 +1648,6 @@ function editCont(id){const c=window.DB.find(x=>x.id===id);if(!c)return;document
   document.getElementById('f_trigA').checked=!!c.trigA;document.getElementById('l_trigA').textContent=c.trigA?'Sí':'No';
   document.getElementById('f_trigB').checked=!!c.trigB;document.getElementById('l_trigB').textContent=c.trigB?'Sí':'No';document.getElementById('trigB_pct').style.display=c.trigB?'flex':'none';document.getElementById('f_trigBpct').value=c.trigBpct||'';
   document.getElementById('f_trigC').checked=!!c.trigC;document.getElementById('l_trigC').textContent=c.trigC?'Sí':'No';document.getElementById('trigC_mes').style.display=c.trigC?'flex':'none';document.getElementById('f_trigCmes').value=c.trigCmes||'';
-  if(typeof populateSapVendorList==='function')populateSapVendorList();
-  document.getElementById('f_sapVendor').value=c.sapVendor||'';
   document.getElementById('f_sapMaterial').value=c.sapMaterial||'';
   document.getElementById('f_sapCtype').value=c.sapCtype||'CONT-U';
   document.getElementById('f_sapEng').value=c.sapEng||'';

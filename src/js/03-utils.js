@@ -561,8 +561,14 @@ async function guardar(){
     return;
   }
   toast(wasNew?'Contrato creado':'Actualizado','ok');
-  resetForm();renderList();updNav();go('list');
-  
+  const newId=c.id;
+  resetForm();renderList();updNav();
+  // Un contrato recién creado todavía no tiene N° (lo asigna SAP) — en vez de ir a
+  // la lista, se va directo al Detalle, que es donde está el paso siguiente
+  // ("Integración SAP": exportar el CSV y después pegar el N° de contrato).
+  if(wasNew){ window.detId=newId; go('detail'); }
+  else { go('list'); }
+
   // Actualizar fuzzy search cache
   if (typeof window.initFuzzySearch === 'function') {
     window.initFuzzySearch();
@@ -604,7 +610,7 @@ function resetForm(){
   document.getElementById('f_trigC').checked=false;document.getElementById('l_trigC').textContent='No';document.getElementById('trigC_mes').style.display='none';
   buildPoly();files=[];renderFL();
   populateProvSelect();
-  populateSapVendorList();
+  document.getElementById('f_sapVendor').value='';
 }
 function populateProvSelect(){
   const sel=document.getElementById('f_cont');
@@ -622,37 +628,24 @@ function populateProvSelect(){
     sel.appendChild(opt);
   });
 }
-function populateSapVendorList(){
-  const dl=document.getElementById('sapVendorList');
-  if(!dl||typeof SAP_VENDORS==='undefined')return;
-  if(dl.childNodes.length)return; // 1881 vendors — armar la datalist una sola vez
-  const frag=document.createDocumentFragment();
-  SAP_VENDORS.forEach(v=>{
-    const opt=document.createElement('option');
-    opt.value=v.n;
-    opt.label=v.l;
-    frag.appendChild(opt);
-  });
-  dl.appendChild(frag);
-}
-// El Vendor (código SAP) es la fuente de verdad: al tipearlo/elegirlo, la razón
-// social del Contratista se completa sola — ya no se elige el contratista aparte.
-function onSapVendorChange(){
-  const code=(document.getElementById('f_sapVendor')?.value||'').trim();
-  const sel=document.getElementById('f_cont');
-  if(!code||!sel)return;
-  let name='';
-  const prov=(typeof PROV_DB!=='undefined'?PROV_DB:[]).find(p=>String(p.vendorNum||'')===code);
-  if(prov)name=prov.name||prov.nombre||'';
-  if(!name&&typeof SAP_VENDORS!=='undefined'){
-    const v=SAP_VENDORS.find(x=>String(x.n)===code);
-    if(v)name=v.l;
+// El Contratista (razón social) es lo que elige la persona — el Vendor (código
+// SAP) sale solo de ahí, buscando primero en PROV_DB (vendorNum) y si no
+// aparece, en SAP_VENDORS por nombre. El campo Vendor queda disabled: nunca
+// se tipea a mano.
+function onContratistaChange(){
+  const name=(document.getElementById('f_cont')?.value||'').trim();
+  const out=document.getElementById('f_sapVendor');
+  if(!out)return;
+  if(!name){out.value='';return;}
+  let code='';
+  const prov=(typeof PROV_DB!=='undefined'?PROV_DB:[]).find(p=>(p.name||p.nombre||'')===name);
+  if(prov&&prov.vendorNum)code=prov.vendorNum;
+  if(!code&&typeof SAP_VENDORS!=='undefined'){
+    const v=SAP_VENDORS.find(x=>String(x.l||'').toUpperCase()===name.toUpperCase());
+    if(v)code=v.n;
   }
-  if(!name){toast('Código de Vendor no encontrado','er');return;}
-  let opt=Array.from(sel.options).find(o=>o.value===name);
-  if(!opt){opt=document.createElement('option');opt.value=name;opt.textContent=name;sel.appendChild(opt);}
-  sel.value=name;
-  toast('Contratista: '+name,'ok');
+  out.value=code;
+  if(!code)toast('No se encontró código SAP (Vendor) para este contratista','er');
 }
 function cancelForm(){
   editId=null;

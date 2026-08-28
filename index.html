@@ -31,7 +31,7 @@
   <div class="sb-env">
     <span class="dot"></span>
     <span class="lab"><strong>Producción</strong> · sincronizado</span>
-    <span class="ver" id="sbVerBadge">v184</span>
+    <span class="ver" id="sbVerBadge">v185</span>
   </div>
   <!-- Nav -->
   <nav class="sb-nav">
@@ -61,7 +61,7 @@
 <main class="mn">
 <header class="tb">
   <div class="tb-left">
-    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v184-num-post-sap</span></h1>
+    <h1 id="pgT">📋 Contratos <span class="bc" id="buildTag">v185-vendor-flujo-sap</span></h1>
   </div>
   <div class="tba" id="pgA">
     <div style="position:relative;width:100%;max-width:360px;">
@@ -116,8 +116,9 @@
 <div id="cForm" class="card">
   <div class="fsec"><div class="fsh"><div class="fi t">📝</div><h2>Datos Generales<span>Información básica del contrato</span></h2></div>
     <div class="fg">
-      <div class="fgrp"><label>N° Contrato <span class="tip" data-t="Se completa después, cuando SAP crea el contrato (ME31K) y devuelve el número">?</span></label><input type="text" id="f_num" placeholder="Se completa al crear en SAP"></div>
-      <div class="fgrp"><label>Contratista <span class="req">*</span></label><select id="f_cont"><option value="">Seleccionar contratista</option></select></div>
+      <div class="fgrp"><label>N° Contrato <span class="tip" data-t="Lo asigna SAP al crear el contrato (ME31K) — se completa desde el Detalle, no acá">?</span></label><input type="text" id="f_num" placeholder="Se completa al crear en SAP" disabled style="background:#f5f5f5"></div>
+      <div class="fgrp"><label>Contratista <span class="req">*</span></label><select id="f_cont" onchange="onContratistaChange()"><option value="">Seleccionar contratista</option></select></div>
+      <div class="fgrp"><label>Vendor (código SAP) <span class="tip" data-t="Se completa solo según el Contratista elegido">?</span></label><input type="text" id="f_sapVendor" placeholder="Se completa según el Contratista" disabled style="background:#f5f5f5"></div>
       <div class="fgrp"><label>Tipo Actualización</label><input type="text" value="CONTRATO INICIAL" disabled></div>
       <div class="fgrp"><label>Tipo Contrato <span class="req">*</span></label><select id="f_tipo" onchange="onTipoContratoChange()"><option value="">—</option><option>SERVICIO</option><option>OBRA</option></select></div>
       <div class="fgrp"><label>Moneda <span class="req">*</span></label><select id="f_mon"><option value="">—</option><option>ARS</option><option>USD</option><option>EUR</option></select></div>
@@ -262,9 +263,8 @@
       <div class="fgrp"><label>PR # (si aplica)</label><input type="text" id="f_fax" placeholder="Ej: SR_TO_CP_91_2025_MZ"></div>
     </div>
   </div>
-  <div class="fsec"><div class="fsh"><div class="fi t">🖥️</div><h2>Integración SAP<span>Datos para crear el contrato en SAP (ME31K) como DRAFT</span></h2></div>
+  <div class="fsec"><div class="fsh"><div class="fi t">🖥️</div><h2>Integración SAP<span>Datos para crear el contrato en SAP (ME31K) como DRAFT — el Vendor se completa junto con el Contratista, arriba</span></h2></div>
     <div class="fg">
-      <div class="fgrp"><label>Vendor (código SAP)</label><input type="text" id="f_sapVendor" list="sapVendorList" placeholder="1021777" onchange="onSapVendorChange()"><datalist id="sapVendorList"></datalist></div>
       <div class="fgrp"><label>Material</label><input type="text" id="f_sapMaterial" placeholder="4000066"></div>
       <div class="fgrp"><label>Contract Type</label><input type="text" id="f_sapCtype" placeholder="CONT-U" value="CONT-U"></div>
       <div class="fgrp"><label>Contract Engineer</label><input type="text" id="f_sapEng" placeholder="Código SAP"></div>
@@ -367,8 +367,8 @@
 
 <script src="src/js/01-config.js?v=110"></script>
 <script src="src/js/02-supabase-auth.js?v=111"></script>
-<script src="src/js/03-utils.js?v=127"></script>
-<script src="src/js/04-contracts.js?v=150"></script>
+<script src="src/js/03-utils.js?v=128"></script>
+<script src="src/js/04-contracts.js?v=151"></script>
 <script src="src/js/05-indices.js?v=130"></script>
 <script src="src/js/06-licit-prov.js?v=112"></script>
 <script src="src/js/07-polynomial.js?v=120"></script>
