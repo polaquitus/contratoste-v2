@@ -838,6 +838,28 @@ function renderDet(){
         </div>`;
       })():''}
       <div class="section-box">
+        <h3>🖥️ Integración SAP <span class="tcnt">${c.sapContractNo?'Contrato creado':'Pendiente'}</span></h3>
+        <div class="dossier-grid top" style="grid-template-columns:1fr 1fr">
+          <div>
+            <div class="dr"><span>Vendor</span><span class="dv">${esc(c.sapVendor||'—')}</span></div>
+            <div class="dr"><span>Material</span><span class="dv">${esc(c.sapMaterial||'—')}</span></div>
+            <div class="dr"><span>Contract Type</span><span class="dv">${esc(c.sapCtype||'CONT-U')}</span></div>
+          </div>
+          <div>
+            <div class="dr"><span>Contract Engineer</span><span class="dv">${esc(c.sapEng||'—')}</span></div>
+            <div class="dr"><span>Cost Controller</span><span class="dv">${esc(c.sapCtrl||'—')}</span></div>
+            <div class="dr"><span>Contract Owner</span><span class="dv">${esc(c.sapOwner||'—')}</span></div>
+            <div class="dr"><span>Buyer</span><span class="dv">${esc(c.sapBuyer||'—')}</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-p btn-sm" onclick="exportContratoSap('${c.id}')">📥 Exportar CSV para SAP</button>
+          <span style="font-size:12px;color:var(--g600c)">N° Contrato SAP:</span>
+          <input type="text" id="f_sapContractNoDet" value="${esc(c.sapContractNo||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
+          <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')">💾 Guardar</button>
+        </div>
+      </div>
+      <div class="section-box">
         <h3>📑 Enmiendas <span class="tcnt">${enms.length} registradas</span></h3>
         <table class="enm-tbl"><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Período de Aplicación</th><th>Descripción</th><th></th></tr></thead><tbody>${enmRows}</tbody></table>
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -1625,10 +1647,63 @@ function editCont(id){const c=window.DB.find(x=>x.id===id);if(!c)return;document
   document.getElementById('f_trigA').checked=!!c.trigA;document.getElementById('l_trigA').textContent=c.trigA?'Sí':'No';
   document.getElementById('f_trigB').checked=!!c.trigB;document.getElementById('l_trigB').textContent=c.trigB?'Sí':'No';document.getElementById('trigB_pct').style.display=c.trigB?'flex':'none';document.getElementById('f_trigBpct').value=c.trigBpct||'';
   document.getElementById('f_trigC').checked=!!c.trigC;document.getElementById('l_trigC').textContent=c.trigC?'Sí':'No';document.getElementById('trigC_mes').style.display=c.trigC?'flex':'none';document.getElementById('f_trigCmes').value=c.trigCmes||'';
+  if(typeof populateSapVendorList==='function')populateSapVendorList();
+  document.getElementById('f_sapVendor').value=c.sapVendor||'';
+  document.getElementById('f_sapMaterial').value=c.sapMaterial||'';
+  document.getElementById('f_sapCtype').value=c.sapCtype||'CONT-U';
+  document.getElementById('f_sapEng').value=c.sapEng||'';
+  document.getElementById('f_sapCtrl').value=c.sapCtrl||'';
+  document.getElementById('f_sapOwner').value=c.sapOwner||'';
+  document.getElementById('f_sapBuyer').value=c.sapBuyer||'';
   files=(c.adj||[]).map(a=>({...a}));renderFL();go('form');
 }
 
 async function delCont(id){if(!confirm('¿Eliminar contrato?'))return;const c=window.DB.find(x=>x.id===id);if(c&&SB_OK)await sbDeleteItem('contratos',c.__sbId);window.DB=window.DB.filter(x=>x.id!==id);if(!SB_OK)localStorage.setItem('cta_v7',JSON.stringify(window.DB));renderList();updNav();toast('Eliminado','ok');if(window.detId===id)go('list');if(typeof window.initFuzzySearch==='function')window.initFuzzySearch();}
+
+// ===================== INTEGRACIÓN SAP (SAP_Contract_Creator.hta) =====================
+// Exporta un CSV de una fila, mismo esquema de columnas que espera el HTA
+// (id;num;vendor;material;qty;vstart;vend;ctype;eng;ctrl;owner;buyer;result). El HTA
+// crea el contrato en SAP (ME31K, como DRAFT) y devuelve el N° de contrato, que se
+// pega a mano en el campo "N° Contrato SAP" del detalle (guardarSapContractNo).
+function _sapCsvCell(s){
+  s=String(s===undefined||s===null?'':s);
+  if(s.indexOf(';')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function exportContratoSap(id){
+  const c=window.DB.find(x=>x.id===id);if(!c){toast('Contrato no encontrado','er');return;}
+  if(!c.sapVendor){toast('Falta el código de Vendor SAP — completalo en Editar → Integración SAP','er');return;}
+  if(!c.sapMaterial){toast('Falta el Material SAP — completalo en Editar → Integración SAP','er');return;}
+  const cols=['id','num','vendor','material','qty','vstart','vend','ctype','eng','ctrl','owner','buyer','result'];
+  const row={
+    id:c.id, num:c.num||'', vendor:c.sapVendor||'', material:c.sapMaterial||'',
+    qty:c.monto||0, vstart:c.fechaIni||'', vend:c.fechaFin||'',
+    ctype:c.sapCtype||'CONT-U', eng:c.sapEng||'', ctrl:c.sapCtrl||'',
+    owner:c.sapOwner||'', buyer:c.sapBuyer||'', result:''
+  };
+  const csv=cols.join(';')+'\r\n'+cols.map(k=>_sapCsvCell(row[k])).join(';')+'\r\n';
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='sap_contrato_'+(c.num||c.id)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  toast('CSV exportado — abrilo con "Abrir CSV" en SAP_Contract_Creator.hta','ok');
+}
+async function guardarSapContractNo(id){
+  const c=window.DB.find(x=>x.id===id);if(!c){toast('Contrato no encontrado','er');return;}
+  const val=(document.getElementById('f_sapContractNoDet')?.value||'').trim();
+  c.sapContractNo=val||null;
+  c.updatedAt=new Date().toISOString();
+  try{
+    if(SB_OK)await sbUpsertItem('contratos',c);
+    else localStorage.setItem('cta_v7',JSON.stringify(window.DB));
+    toast(val?'N° de contrato SAP guardado':'N° de contrato SAP borrado','ok');
+    renderDet();
+  }catch(e){
+    toast('Error al guardar: '+e.message,'er');
+  }
+}
 
 // ===================== ME2N SYSTEM =====================
 // ME2N data structure: { "4600005730": ["VENDOR NAME", "EUR", [[po,YYYY-MM,plant,nov,still,nItems,shortText],...]], ... }

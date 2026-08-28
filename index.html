@@ -31,7 +31,7 @@
   <div class="sb-env">
     <span class="dot"></span>
     <span class="lab"><strong>Producción</strong> · sincronizado</span>
-    <span class="ver" id="sbVerBadge">v3-it</span>
+    <span class="ver" id="sbVerBadge">v3-sap</span>
   </div>
   <!-- Nav -->
   <nav class="sb-nav">
@@ -262,6 +262,17 @@
       <div class="fgrp"><label>PR # (si aplica)</label><input type="text" id="f_fax" placeholder="Ej: SR_TO_CP_91_2025_MZ"></div>
     </div>
   </div>
+  <div class="fsec"><div class="fsh"><div class="fi t">🖥️</div><h2>Integración SAP<span>Datos para crear el contrato en SAP (ME31K) como DRAFT</span></h2></div>
+    <div class="fg">
+      <div class="fgrp"><label>Vendor (código SAP)</label><input type="text" id="f_sapVendor" list="sapVendorList" placeholder="1021777" onchange="onSapVendorChange()"><datalist id="sapVendorList"></datalist></div>
+      <div class="fgrp"><label>Material</label><input type="text" id="f_sapMaterial" placeholder="4000066"></div>
+      <div class="fgrp"><label>Contract Type</label><input type="text" id="f_sapCtype" placeholder="CONT-U" value="CONT-U"></div>
+      <div class="fgrp"><label>Contract Engineer</label><input type="text" id="f_sapEng" placeholder="Código SAP"></div>
+      <div class="fgrp"><label>Cost Controller</label><input type="text" id="f_sapCtrl" placeholder="Código SAP"></div>
+      <div class="fgrp"><label>Contract Owner</label><input type="text" id="f_sapOwner" placeholder="Código SAP"></div>
+      <div class="fgrp"><label>Buyer</label><input type="text" id="f_sapBuyer" placeholder="Código SAP"></div>
+    </div>
+  </div>
   <div class="fsec"><div class="fsh"><div class="fi t">📑</div><h2>Clausulado del Contrato<span>Configuración del borrador Word</span></h2></div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div style="font-size:12.5px;color:var(--g600c);max-width:520px">Definí el alcance, los horarios, la facturación y qué cláusulas del modelo de Condiciones Particulares se incluyen en el contrato.</div>
@@ -356,8 +367,8 @@
 
 <script src="src/js/01-config.js?v=110"></script>
 <script src="src/js/02-supabase-auth.js?v=111"></script>
-<script src="src/js/03-utils.js?v=125"></script>
-<script src="src/js/04-contracts.js?v=148"></script>
+<script src="src/js/03-utils.js?v=126"></script>
+<script src="src/js/04-contracts.js?v=149"></script>
 <script src="src/js/05-indices.js?v=130"></script>
 <script src="src/js/06-licit-prov.js?v=112"></script>
 <script src="src/js/07-polynomial.js?v=120"></script>

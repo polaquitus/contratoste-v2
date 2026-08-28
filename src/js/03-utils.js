@@ -476,6 +476,11 @@ async function guardar(){
     comiteObs:document.getElementById('f_fueComite').checked?(gv('f_comiteObs')||null):null,
     rtec:gv('f_rtec'),tc:parseFloat(gv('f_tc'))||1,own:gv('f_own')||null,asset:gv('f_asset')||null,
     cprov:gv('f_cprov'),vend:gv('f_vend')||null,fax:gv('f_fax')||null,
+    // Integración SAP (SAP_Contract_Creator.hta) — sapContractNo NO se toca acá, se
+    // guarda aparte con guardarSapContractNo() una vez que SAP devuelve el número.
+    sapVendor:gv('f_sapVendor')||null,sapMaterial:gv('f_sapMaterial')||null,
+    sapCtype:gv('f_sapCtype')||'CONT-U',sapEng:gv('f_sapEng')||null,
+    sapCtrl:gv('f_sapCtrl')||null,sapOwner:gv('f_sapOwner')||null,sapBuyer:gv('f_sapBuyer')||null,
     adj:files.map(f=>({name:f.name,size:f.size,data:f.data})),
     com:gv('f_com')||null,
     // Anticipo (solo para OBRA)
@@ -599,6 +604,7 @@ function resetForm(){
   document.getElementById('f_trigC').checked=false;document.getElementById('l_trigC').textContent='No';document.getElementById('trigC_mes').style.display='none';
   buildPoly();files=[];renderFL();
   populateProvSelect();
+  populateSapVendorList();
 }
 function populateProvSelect(){
   const sel=document.getElementById('f_cont');
@@ -615,6 +621,38 @@ function populateProvSelect(){
     opt.textContent=p.name||p.nombre||'Sin nombre';
     sel.appendChild(opt);
   });
+}
+function populateSapVendorList(){
+  const dl=document.getElementById('sapVendorList');
+  if(!dl||typeof SAP_VENDORS==='undefined')return;
+  if(dl.childNodes.length)return; // 1881 vendors — armar la datalist una sola vez
+  const frag=document.createDocumentFragment();
+  SAP_VENDORS.forEach(v=>{
+    const opt=document.createElement('option');
+    opt.value=v.n;
+    opt.label=v.l;
+    frag.appendChild(opt);
+  });
+  dl.appendChild(frag);
+}
+// El Vendor (código SAP) es la fuente de verdad: al tipearlo/elegirlo, la razón
+// social del Contratista se completa sola — ya no se elige el contratista aparte.
+function onSapVendorChange(){
+  const code=(document.getElementById('f_sapVendor')?.value||'').trim();
+  const sel=document.getElementById('f_cont');
+  if(!code||!sel)return;
+  let name='';
+  const prov=(typeof PROV_DB!=='undefined'?PROV_DB:[]).find(p=>String(p.vendorNum||'')===code);
+  if(prov)name=prov.name||prov.nombre||'';
+  if(!name&&typeof SAP_VENDORS!=='undefined'){
+    const v=SAP_VENDORS.find(x=>String(x.n)===code);
+    if(v)name=v.l;
+  }
+  if(!name){toast('Código de Vendor no encontrado','er');return;}
+  let opt=Array.from(sel.options).find(o=>o.value===name);
+  if(!opt){opt=document.createElement('option');opt.value=name;opt.textContent=name;sel.appendChild(opt);}
+  sel.value=name;
+  toast('Contratista: '+name,'ok');
 }
 function cancelForm(){
   editId=null;
