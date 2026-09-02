@@ -1,3 +1,9 @@
+// Versión real, leída UNA vez del badge estático de index.html (el que se
+// actualiza a mano en cada release) — evita que go('list') y las funciones
+// de la vista Usuarios sigan mostrando el "v86-redesign" hardcodeado de hace
+// muchísimas versiones cada vez que redibujan el título.
+var _REAL_BUILD_TAG = (document.getElementById('buildTag') && document.getElementById('buildTag').textContent) || 'v86-redesign';
+
 // Parse fecha tipeada en DD/MM/AAAA o AAAA-MM-DD → ISO YYYY-MM-DD; devuelve '' si no es válida.
 function parseEnmDate(raw){
   if(!raw) return '';
@@ -177,7 +183,7 @@ function go(v){
   if(v==='list'){
     document.getElementById('vList').classList.add('on');
     _navAct('list');
-    t.innerHTML='📋 Contratos <span class="bc" id="buildTag">v86-redesign</span>';
+    t.innerHTML='📋 Contratos <span class="bc" id="buildTag">'+_REAL_BUILD_TAG+'</span>';
     a.innerHTML=`<div style="position:relative;width:100%;max-width:400px;">
       <input 
         type="text" 
