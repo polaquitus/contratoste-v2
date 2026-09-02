@@ -718,10 +718,24 @@ function renderDet(){
     });
     document.getElementById('detCard').innerHTML=`<div class="card">
       <div class="det-h">
-        <div><h2>${esc(c.num||'(pendiente de SAP)')} — ${esc(c.cont)}</h2><div class="ds">${esc(c.det||'')} · ${esc(c.tipo||'')} · ${esc(c.tcontr||'')}</div></div>
+        <div><h2>${(()=>{
+            // N° de contrato SAP: editable acá mismo (al lado del título) mientras no esté
+            // asignado, o para OWNER/ADMIN que necesiten corregirlo. guardarSapContractNo()
+            // ya chequea duplicados contra el resto de window.DB y bloquea el campo para el
+            // resto de los roles una vez asignado (ver más abajo, sin tocar esa lógica).
+            const isAdmin=['OWNER','ADMIN'].includes(String(typeof _APP_ROLE!=='undefined'?_APP_ROLE:'').toUpperCase());
+            if(c.num&&!isAdmin){
+              return `<span title="Asignado — solo un admin puede cambiarlo">${esc(c.num)}</span>`;
+            }
+            return `<span style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle">
+              <input type="text" id="f_sapContractNoDet" value="${esc(c.num||'')}" placeholder="N° SAP pendiente" title="N° de contrato que devolvió SAP" style="font-family:monospace;font-size:15px;font-weight:700;width:170px;padding:3px 7px;vertical-align:middle;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:4px">
+              <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')" title="Guardar N° de contrato SAP">💾</button>
+            </span>`;
+          })()} — ${esc(c.cont)}</h2><div class="ds">${esc(c.det||'')} · ${esc(c.tipo||'')} · ${esc(c.tcontr||'')}</div></div>
         <div style="display:flex;gap:8px;align-items:center">
           <span class="bdg ${isA?'act':'exp'}" style="font-size:12px;padding:5px 14px">● ${isA?'ACTIVO':'VENCIDO'}</span>
           <button class="btn btn-sm btn-a" onclick="window.copyContractAsTemplate()" title="Duplicar como template">📋 Duplicar</button>
+          <button class="btn btn-p btn-sm" onclick="exportContratoSap('${c.id}')" title="Exportar CSV para SAP_Contract_Creator.hta">📥 CSV SAP</button>
           <button class="btn btn-s btn-sm" onclick="editCont('${c.id}')">✏️ Editar</button>
           <button class="btn btn-d btn-sm" onclick="delCont('${c.id}')" title="Eliminar contrato">🗑️ Eliminar</button>
         </div>
@@ -837,36 +851,6 @@ function renderDet(){
           </details>
         </div>`;
       })():''}
-      <div class="section-box">
-        <h3>🖥️ Integración SAP <span class="tcnt">${c.num?'Contrato creado':'Pendiente'}</span></h3>
-        <div class="dossier-grid top" style="grid-template-columns:1fr 1fr">
-          <div>
-            <div class="dr"><span>Vendor</span><span class="dv">${esc(c.sapVendor||'—')}</span></div>
-            <div class="dr"><span>Material</span><span class="dv">${esc(c.sapMaterial||'—')}</span></div>
-            <div class="dr"><span>Contract Type</span><span class="dv">${esc(c.sapCtype||'CONT-U')}</span></div>
-          </div>
-          <div>
-            <div class="dr"><span>Contract Engineer</span><span class="dv">${esc(c.sapEng||'—')}</span></div>
-            <div class="dr"><span>Cost Controller</span><span class="dv">${esc(c.sapCtrl||'—')}</span></div>
-            <div class="dr"><span>Contract Owner</span><span class="dv">${esc(c.sapOwner||'—')}</span></div>
-            <div class="dr"><span>Buyer</span><span class="dv">${esc(c.sapBuyer||'—')}</span></div>
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-p btn-sm" onclick="exportContratoSap('${c.id}')">📥 Exportar CSV para SAP</button>
-          <span style="font-size:12px;color:var(--g600c)">N° Contrato:</span>
-          ${(()=>{
-            // Una vez asignado el N° de contrato real, solo OWNER/ADMIN pueden
-            // corregirlo — para el resto de los roles queda de solo lectura.
-            const isAdmin=['OWNER','ADMIN'].includes(String(typeof _APP_ROLE!=='undefined'?_APP_ROLE:'').toUpperCase());
-            if(c.num&&!isAdmin){
-              return `<span class="dv" style="font-family:monospace">${esc(c.num)}</span> <span style="font-size:11px;color:var(--g500)">(asignado — solo un admin puede cambiarlo)</span>`;
-            }
-            return `<input type="text" id="f_sapContractNoDet" value="${esc(c.num||'')}" placeholder="Pegar acá el N° que devolvió SAP" style="width:180px;font-family:monospace">
-          <button class="btn btn-s btn-sm" onclick="guardarSapContractNo('${c.id}')">💾 Guardar</button>`;
-          })()}
-        </div>
-      </div>
       <div class="section-box">
         <h3>📑 Enmiendas <span class="tcnt">${enms.length} registradas</span></h3>
         <table class="enm-tbl"><thead><tr><th>#</th><th>Tipo / Concepto</th><th>Detalle</th><th>Fecha</th><th>Período de Aplicación</th><th>Descripción</th><th></th></tr></thead><tbody>${enmRows}</tbody></table>
@@ -1229,6 +1213,23 @@ function renderDet(){
             +svg+legend;
         }catch(e){console.warn('chart evolución', e); return '<h3>📈 Evolución del contrato</h3>';}
       })()}
+      </div>
+      <div class="section-box">
+        <h3>🖥️ Integración SAP <span class="tcnt">${c.num?'Contrato creado':'Pendiente'}</span></h3>
+        <div class="dossier-grid top" style="grid-template-columns:1fr 1fr">
+          <div>
+            <div class="dr"><span>Vendor</span><span class="dv">${esc(c.sapVendor||'—')}</span></div>
+            <div class="dr"><span>Material</span><span class="dv">${esc(c.sapMaterial||'—')}</span></div>
+            <div class="dr"><span>Contract Type</span><span class="dv">${esc(c.sapCtype||'CONT-U')}</span></div>
+          </div>
+          <div>
+            <div class="dr"><span>Contract Engineer</span><span class="dv">${esc(c.sapEng||'—')}</span></div>
+            <div class="dr"><span>Cost Controller</span><span class="dv">${esc(c.sapCtrl||'—')}</span></div>
+            <div class="dr"><span>Contract Owner</span><span class="dv">${esc(c.sapOwner||'—')}</span></div>
+            <div class="dr"><span>Buyer</span><span class="dv">${esc(c.sapBuyer||'—')}</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--g500)">El botón para exportar el CSV y el N° de contrato están arriba, al lado del título.</div>
       </div>
 
     </div>`;
