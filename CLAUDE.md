@@ -39,7 +39,8 @@ Comparte 252 de sus 261 commits. Las diferencias:
   `src/js/01..11` + `src/css/main.css`
 - **Backend:** Supabase (`https://upxsqroxbvzwudcaklvn.supabase.co`)
 - **AI:** Gemini vía Edge Function `gemini-proxy` (key server-side)
-- **CI:** `.github/workflows/test.yml` — ⚠️ **roto, ver "Puntos ciegos"**
+- **CI:** `.github/workflows/test.yml` — sirve el commit en `localhost:8080` y corre
+  `.github/scripts/reglas-negocio.js` (9 aserciones sobre números) + `smoke.js`
 
 ### Módulos (`src/js/`)
 
@@ -144,9 +145,9 @@ FADEEAC:         https://www.fadeeac.org.ar/feed/
 
 Detalle completo en `skills-contratoste/REGRESIONES.md` §3, §4 y §5.
 
-1. **El CI ya prueba este commit** (servido en `localhost:8080`) y verifica que los módulos
-   declarados existan — pero **sigue sin verificar ni un número**: ni un AVE, ni un Ko, ni un
-   plazo. Un verde significa "carga y los módulos existen", nada más.
+1. **El CI prueba este commit y verifica números** — 9 reglas de negocio, cada una atada a un
+   bug real (`reglas-negocio.js`). Lo que **no** cubre: todo lo que no esté en esas 9. Un verde
+   significa "esas nueve reglas se cumplen y la app carga", no "está todo bien".
 2. **`c.num` puede ser `null`** — SAP lo asigna después. Ya no desaparece en silencio (helpers
    `tieneNumSap`/`numLabel`/`numLabelText` en `03-utils.js:690-701`), pero **la clave real del
    contrato es `c.id`**: toda lógica nueva tiene que usar `id`.

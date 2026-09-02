@@ -83,7 +83,17 @@ jobs:
           done
           echo "✗ el server local no respondió"; cat /tmp/http.log; exit 1
 
-      # ── 6. Test headless contra el commit ────────────────────────────────
+      # ── 6. Reglas de negocio: los NÚMEROS ────────────────────────────────
+      # Lo único que agarra los bugs de esta app, que no rompen la pantalla:
+      # un AVE contado dos veces o un Ko con la fórmula equivocada renderizan
+      # perfecto. Cada caso corresponde a un bug real (ver REGRESIONES.md).
+      # Corre ANTES del smoke: si un número está mal, no importa que navegue.
+      - name: Verificar reglas de negocio
+        env:
+          BASE_URL: http://localhost:8080/
+        run: node .github/scripts/reglas-negocio.js
+
+      # ── 7. Smoke: la app carga y los módulos existen ─────────────────────
       - name: Cargar app y navegar módulos
         env:
           BASE_URL: http://localhost:8080/
@@ -91,7 +101,7 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: node .github/scripts/smoke.js
 
-      # ── 7. Upload screenshots ────────────────────────────────────────────
+      # ── 8. Upload screenshots ────────────────────────────────────────────
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -100,7 +110,7 @@ jobs:
           path: screenshot-*.png
           if-no-files-found: ignore
 
-      # ── 8. Resumen final ─────────────────────────────────────────────────
+      # ── 9. Resumen final ─────────────────────────────────────────────────
       - name: Resumen
         if: always()
         run: |

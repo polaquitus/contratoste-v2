@@ -173,12 +173,32 @@ enriquecido"**. Todo atajo nuevo tiene que ignorar eventos con foco en `input`, 
    (`.github/scripts/smoke.js`, `MODULOS`). El test viejo clickeaba `dashboard` y `prov`, que ya
    no existen en v2, y lo reportaba como error de navegación en vez de como test desactualizado.
 3. **Chequea el cache-busting**: falla si algún archivo de `src/` se carga sin `?v=`.
-4. **Sin `ADMIN_USER`/`ADMIN_PASSWORD`** hace la carga y la verificación de módulos, y saltea
-   login y navegación avisando — en vez de fallar por una causa que no es del código.
+4. **Verifica NÚMEROS** — `.github/scripts/reglas-negocio.js`, 9 aserciones sobre las funciones
+   reales de la app en el navegador. Corre **antes** del smoke: si un número está mal, no importa
+   que navegue bien. Cada caso corresponde a un bug real y cita su regla en la skill que lo
+   documenta.
+5. **Sin `ADMIN_USER`/`ADMIN_PASSWORD`** hace todo lo anterior y saltea login y navegación
+   avisando — en vez de fallar por una causa que no es del código.
 
-> **Lo que el CI todavía NO hace: verificar un número.** No comprueba ni un AVE, ni un Ko, ni un
-> plazo. Un verde significa "la app carga y los módulos existen", nada más. Sigue sin ser
-> evidencia de que un cálculo esté bien.
+### Qué cubren las 9 reglas
+
+| Regla | Bug que previene |
+|---|---|
+| Ledger `= montoBase + Σpoly + Σowner`, idempotente | doble conteo `2026-07-22` |
+| AVE negativo resta | H‑08 |
+| Ko lineal: 50/50 con +10%/+20% → **15%** | H‑13 (la geométrica da 14.891%) |
+| Ko con un componente sin dato → `null` | Ko parcial |
+| Tarifario vigente al período, no el más nuevo | `f11eaff` |
+| Todas las tablas de la generación | `5a15b0e` |
+| Plazo inclusivo: ene→dic = 12 | mes corto |
+| `superseded` excluida del cálculo | doble conteo de ajuste |
+| Incidencias 60+30 no valida, 60+40 sí | H‑13 |
+
+> **Cada test fue verificado en los dos sentidos**: pasa con el código correcto y **falla** con
+> el bug inyectado. Un test que no puede fallar no sirve — si agregás uno, probalo igual.
+>
+> **Lo que el CI sigue sin cubrir:** todo lo que no esté en esas 9 reglas. Un verde no es
+> "está todo bien", es "estas nueve se cumplen".
 >
 > Si recortás o agregás un módulo, actualizá `MODULOS` en `.github/scripts/smoke.js`.
 

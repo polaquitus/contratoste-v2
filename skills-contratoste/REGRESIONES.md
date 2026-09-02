@@ -143,7 +143,7 @@ No son bugs de código y **ninguna skill los arregla**.
 
 | # | Riesgo | Detalle |
 |---|---|---|
-| **I1** | ~~El CI prueba otra app~~ | ✅ Resuelto (N2). Queda pendiente que el CI verifique **números de negocio** (un AVE, un Ko, un plazo), no solo ausencia de errores JS. |
+| **I1** | ~~El CI prueba otra app y no verifica números~~ | ✅ Resuelto. `reglas-negocio.js` corre 9 aserciones sobre el commit, cada una atada a un bug de este catálogo. **Al agregar una regla acá, evaluá si merece un test.** |
 | **I2** | **Las Edge Functions no están en el repo** | `gemini-proxy` y `energia-proxy` existen solo desplegadas: sin fuente, sin versionado, sin revisión. Un cambio que las necesite **no se puede completar desde el repo**. |
 | **I3** | **El `.hta` de SAP tampoco está** | Mismo problema, con el agravante de que el contrato de interfaz (el CSV) es implícito. |
 | **I4** | **El `anon key` es público** | Servido sin auth. Origen de H‑01 y H‑02. Nada secreto puede vivir en el bundle. |
