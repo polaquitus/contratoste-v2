@@ -28,7 +28,7 @@ function renderList(){
     const bc=pct===null?'green':pct>50?'green':pct>20?'yellow':'red';
     const pctDisplay=pct===null?'—':pct.toFixed(1)+'%';
     const pbarW=pct===null?'100':pct.toFixed(1);
-    h+=`<tr class="clickable"><td class="mono" style="font-size:12px;font-weight:600" onclick="verDet('${c.id}')">${esc(c.num)}</td><td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="verDet('${c.id}')">${esc(c.cont)}</td><td class="mono" style="font-size:12px" onclick="verDet('${c.id}')">${c.mon} ${fN(tot)}</td><td class="mono" style="font-size:12px;color:${hasConsumed?'var(--r500)':'var(--g500)'}" onclick="verDet('${c.id}')">${hasConsumed?c.mon+' '+fN(consumed):'—'}</td><td class="mono" style="font-size:12px;font-weight:600;color:${hasConsumed?(remanente<0?'var(--r500)':'var(--p700)'):'var(--g500)'}" onclick="verDet('${c.id}')">${hasConsumed?c.mon+' '+fN(remanente):'—'}</td><td style="min-width:100px" onclick="verDet('${c.id}')"><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><div class="fill ${bc}" style="width:${pbarW}%"></div></div><span style="font-size:11px;font-weight:600">${pctDisplay}</span></div></td><td onclick="verDet('${c.id}')">${fD(c.fechaIni)}</td><td onclick="verDet('${c.id}')">${fD(c.fechaFin)}</td><td onclick="verDet('${c.id}')"><span class="bdg ${isA?'act':'exp'}">● ${isA?'ACTIVO':'VENCIDO'}</span></td><td onclick="verDet('${c.id}')">${(()=>{const comp=getContComp(c);return '<span class="comp-badge '+(comp==='COMPLETO'?'full':comp==='PARCIAL'?'partial':'empty')+'">'+( comp==='COMPLETO'?'✅ Completo':comp==='PARCIAL'?'⚠️ Parcial':'❌ Pendiente')+'</span>';})()}</td><td style="text-align:center"><button class="btn btn-d btn-sm" onclick="event.stopPropagation();delCont('${c.id}')" title="Eliminar contrato">🗑️</button></td></tr>`;
+    h+=`<tr class="clickable"><td class="mono" style="font-size:12px;font-weight:600" onclick="verDet('${c.id}')">${numLabel(c)}</td><td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="verDet('${c.id}')">${esc(c.cont)}</td><td class="mono" style="font-size:12px" onclick="verDet('${c.id}')">${c.mon} ${fN(tot)}</td><td class="mono" style="font-size:12px;color:${hasConsumed?'var(--r500)':'var(--g500)'}" onclick="verDet('${c.id}')">${hasConsumed?c.mon+' '+fN(consumed):'—'}</td><td class="mono" style="font-size:12px;font-weight:600;color:${hasConsumed?(remanente<0?'var(--r500)':'var(--p700)'):'var(--g500)'}" onclick="verDet('${c.id}')">${hasConsumed?c.mon+' '+fN(remanente):'—'}</td><td style="min-width:100px" onclick="verDet('${c.id}')"><div style="display:flex;align-items:center;gap:8px"><div class="pbar" style="flex:1"><div class="fill ${bc}" style="width:${pbarW}%"></div></div><span style="font-size:11px;font-weight:600">${pctDisplay}</span></div></td><td onclick="verDet('${c.id}')">${fD(c.fechaIni)}</td><td onclick="verDet('${c.id}')">${fD(c.fechaFin)}</td><td onclick="verDet('${c.id}')"><span class="bdg ${isA?'act':'exp'}">● ${isA?'ACTIVO':'VENCIDO'}</span></td><td onclick="verDet('${c.id}')">${(()=>{const comp=getContComp(c);return '<span class="comp-badge '+(comp==='COMPLETO'?'full':comp==='PARCIAL'?'partial':'empty')+'">'+( comp==='COMPLETO'?'✅ Completo':comp==='PARCIAL'?'⚠️ Parcial':'❌ Pendiente')+'</span>';})()}</td><td style="text-align:center"><button class="btn btn-d btn-sm" onclick="event.stopPropagation();delCont('${c.id}')" title="Eliminar contrato">🗑️</button></td></tr>`;
   }
   h+='</tbody></table></div>';box.innerHTML=h;
 }
@@ -316,7 +316,7 @@ function renderDossierHtml(c){
 +'<div class="fin-tile total"><div class="fin-label">Valor Total Vigente</div><div class="fin-value">'+_m(totalConAVE)+' '+_e(c.mon||'ARS')+'</div><div class="fin-usd">\u2248 '+_m(Math.round(totalConAVE/tcc))+' USD \u00b7 TC '+tcc+'</div></div>'
 +'</div></div>';
 
-  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>DUET \u2014 '+_e(c.num)+' \u2014 '+_e(c.cont)+'</title>'
+  return '<!doctype html><html lang="es"><head><meta charset="utf-8"><title>DUET \u2014 '+_e(typeof numLabelText==='function'?numLabelText(c):(c.num||''))+' \u2014 '+_e(c.cont)+'</title>'
 +'<style>'+CSS+'</style></head><body>'
 +'<button class="pbtn" onclick="window.print()">&#x1F5A8; Imprimir / PDF</button>'
 +'<div class="page">'
@@ -798,13 +798,18 @@ function renderDet(){
         const poData=ME2N[c.num];
         const pos=poData&&Array.isArray(poData)&&Array.isArray(poData[2])?poData[2]:[];
         const poMeta=c.poMeta||{};
+        // Sin N° de SAP no hay cruce con ME2N: el avance NO es 0%, es desconocido.
+        // Mostrar 0% sería un número falso sobre un contrato de obra (ver skill
+        // integracion-sap §1.1) — por eso se distingue con null.
+        const sinNumSap=!tieneNumSap(c);
         const obraSplit=getObraConsumedSplit(c.num,poMeta)||{avanceObra:0,adicionales:0,total:0};
-        const avancePct=montoBase>0?round2((obraSplit.avanceObra/montoBase)*100):0;
+        const avancePct=sinNumSap?null:(montoBase>0?round2((obraSplit.avanceObra/montoBase)*100):0);
+        const avanceLbl=avancePct===null?'sin N\u00b0 SAP':avancePct+'%';
         const remanente=Math.max(0,montoBase-obraSplit.total);
         return `
         <div class="sec" style="margin-top:18px">
           <details ${pos.length<=25?'open':''}>
-            <summary class="sh" style="cursor:pointer;user-select:none"><span class="ico">📋</span>Certificaciones / POs<span class="ct">${pos.length} registradas · Avance obra ${avancePct}%${obraSplit.adicionales>0?' · Adicionales '+(c.mon||'ARS')+' '+fN(obraSplit.adicionales):''} · Remanente ${c.mon||'ARS'} ${fN(remanente)}</span></summary>
+            <summary class="sh" style="cursor:pointer;user-select:none"><span class="ico">📋</span>Certificaciones / POs<span class="ct">${pos.length} registradas · Avance obra ${avanceLbl}${obraSplit.adicionales>0?' · Adicionales '+(c.mon||'ARS')+' '+fN(obraSplit.adicionales):''} · Remanente ${c.mon||'ARS'} ${fN(remanente)}</span></summary>
             <div style="font-size:11px;color:var(--g600c);margin:6px 0 10px;padding:8px 10px;background:var(--a100);border:1px solid var(--a500);border-radius:6px">
               ⚠️ El <strong>Short Text de la PO</strong> debería empezar a incluir el <strong>período que se está certificando</strong> — la "Document Date" de la PO es cuando se ejecuta la PO, no cuando se certificó el trabajo. Mientras esa práctica no esté instalada, el <strong>Período de Certificación</strong> se autocompleta con la Document Date como aproximación — corregilo a mano si el certificado real es de otro mes.
             </div>
@@ -815,7 +820,7 @@ function renderDet(){
                 </tr>
               </thead>
               <tbody>
-                ${pos.length===0?'<tr><td colspan="8" style="text-align:center;color:var(--g500);font-style:italic;padding:12px">Sin POs asociadas a este contrato</td></tr>':
+                ${pos.length===0?'<tr><td colspan="8" style="text-align:center;color:var(--g500);font-style:italic;padding:12px">'+(sinNumSap?'Este contrato todav\u00eda no tiene N\u00b0 de SAP \u2014 sin \u00e9l no se le pueden asociar POs.':'Sin POs asociadas a este contrato')+'</td></tr>':
                   pos.map((p)=>{
                     const poNum=p[0]||'—';
                     const plant=p[2]||'—';
@@ -1730,6 +1735,10 @@ function plantLabel(p){return PLANT_MAP[p]||p||'—';}
 
 // Get total consumed (sum of Net Order Value) for a contract number from ME2N
 function getConsumed(contractNum){
+  // Sin N° de contrato no hay forma de cruzar con ME2N: SAP todavía no lo asignó.
+  // Se devuelve null (= "no sé"), igual que cuando no hay POs — pero el llamador
+  // tiene que distinguir los dos casos al avisar (ver tieneNumSap en 03-utils).
+  if(!String(contractNum||'').trim())return null;
   const d=ME2N[contractNum];
   if(!d)return null; // null = no data (not 0)
   return d[2].reduce((s,p)=>s+p[3],0);
@@ -1738,6 +1747,7 @@ function getConsumed(contractNum){
 // Clasifica el consumido de un contrato OBRA en "avance de obra" vs "adicionales"
 // según poMeta[poNum].countsAsProgress (default: cuenta como avance)
 function getObraConsumedSplit(contractNum, poMeta){
+  if(!String(contractNum||'').trim())return null;
   const d=ME2N[contractNum];
   if(!d)return null;
   const meta=poMeta||{};
@@ -1871,6 +1881,7 @@ function formatMonth(ym){
 // ═══════════ PO DASHBOARD ═══════════════════════════════
 let _poAvgM=6;
 function renderPoSection(cc){
+  if(!tieneNumSap(cc)) return '<div class="section-box"><h3>\u{1F6D2} Purchase Orders (SAP)</h3><div style="font-size:12.5px;color:var(--g500)">Este contrato todav\u00eda no tiene N\u00b0 de SAP, as\u00ed que no se le pueden asociar POs. Carg\u00e1 el N\u00b0 que devolvi\u00f3 SAP en el encabezado del Detalle.</div></div>';
   const d=ME2N[cc.num];
   if(!d||!d[2].length) return '<div class="section-box"><h3>🛒 Purchase Orders (SAP)</h3><div style="font-size:12.5px;color:var(--g500)">Sin POs en ME2N. Importá el Excel desde Purchase Orders.</div></div>';
   const cPos=d[2],curr=d[1]||cc.mon;const totNOV=cPos.reduce((s,p)=>s+p[3],0);const totTV=cc.monto+(cc.aves||[]).filter(a=>a.tipo==='POLINOMICA').reduce((s,a)=>s+(a.monto||0),0)+(cc.aves||[]).filter(a=>a.tipo==='OWNER').reduce((s,a)=>s+(a.monto||0),0);const rem=totTV-totNOV;const remMonths=monthsRemainingInclusive(ymToday(),cc.fechaFin);

@@ -746,6 +746,11 @@ window.openBurnRate = function(cid){
   try{
     const c = (window.DB||[]).find(x=>x.id===cid);
     if(!c){ toast('Contrato no encontrado','er'); return; }
+    // El N° lo asigna SAP después de crear el contrato, así que puede no existir.
+    // Sin él no hay cruce posible con ME2N: hay que decir ESO, no "faltan POs".
+    if(typeof tieneNumSap==='function' && !tieneNumSap(c)){
+      toast('Este contrato todavía no tiene N° de SAP — sin él no se puede calcular el burn rate','er'); return;
+    }
     const consumed = (typeof getConsumed==='function')?getConsumed(c.num):null;
     if(consumed===null){ toast('Sin datos de consumo (importá ME2N)','er'); return; }
     const aves=c.aves||[];
@@ -906,7 +911,7 @@ window.openBurnRate = function(cid){
       : '';
 
     const html='<div class="modal-content" style="max-width:820px;background:#fff;color:#111">'
-      +'<div class="modal-header"><h2 style="color:#111">📊 Burn rate · '+esc(c.num)+' — '+esc(c.cont||'')+'</h2><button class="modal-close" onclick="closeBurnRate()" style="color:#111">×</button></div>'
+      +'<div class="modal-header"><h2 style="color:#111">📊 Burn rate · '+esc(typeof numLabelText==='function'?numLabelText(c):(c.num||''))+' — '+esc(c.cont||'')+'</h2><button class="modal-close" onclick="closeBurnRate()" style="color:#111">×</button></div>'
       +'<div class="modal-body" style="padding:20px">'
         +'<div style="display:flex;gap:14px;align-items:center;padding:12px 14px;background:'+bg+';border-left:4px solid '+col+';border-radius:6px;margin-bottom:14px">'
           +'<span style="font-size:24px">'+emoji+'</span>'

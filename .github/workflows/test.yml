@@ -1,4 +1,4 @@
-name: Contratos TA — Test automatico
+name: Contratos TA v2 — Test automatico
 
 on:
   push:
@@ -40,9 +40,22 @@ jobs:
         run: |
           grep -q "<script" index.html && echo "✓ tag script presente" || (echo "✗ No se encontro tag script" && exit 1)
           grep -q "supabase" index.html && echo "✓ referencia a supabase presente" || echo "⚠ No se encontro referencia a supabase"
-          grep -q "APP_VERSION" index.html && echo "✓ APP_VERSION presente" || echo "⚠ APP_VERSION no encontrado"
 
-      # ── 3. Setup Node + Playwright ───────────────────────────────────────
+      # ── 3. Cache-busting: todo src/ referenciado tiene que llevar ?v= ─────
+      # Sin ?v= el navegador sirve el archivo cacheado y el cambio no se ve.
+      # vendor/ va sin ?v= a propósito (no cambia).
+      - name: Verificar cache-busting de src/
+        run: |
+          FALTAN=$(grep -oE '(src|href)="src/[^"]*"' index.html \
+                   | grep -v 'vendor/' | grep -v '?v=' || true)
+          if [ -n "$FALTAN" ]; then
+            echo "✗ Estos archivos de src/ se cargan SIN ?v= — el cambio no se va a ver:"
+            echo "$FALTAN"
+            exit 1
+          fi
+          echo "✓ todos los archivos de src/ llevan ?v="
+
+      # ── 4. Setup Node + Playwright ───────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -54,158 +67,31 @@ jobs:
           npm install playwright
           npx playwright install chromium --with-deps
 
-      # ── 4. Test headless: login + navegación por módulos ────────────────────
-      - name: Login y navegar módulos
+      # ── 5. Servir ESTE commit localmente ─────────────────────────────────
+      # Antes el test navegaba a https://polaquitus.github.io/contratoste/ — la
+      # producción de OTRO repo. Un push a una rama testeaba código ajeno y el
+      # verde no significaba nada. Ahora se sirve el árbol de este commit.
+      - name: Servir el repo en localhost:8080
+        run: |
+          nohup python3 -m http.server 8080 --directory . > /tmp/http.log 2>&1 &
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:8080/index.html -o /dev/null; then
+              echo "✓ sirviendo este commit en http://localhost:8080/"
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "✗ el server local no respondió"; cat /tmp/http.log; exit 1
+
+      # ── 6. Test headless contra el commit ────────────────────────────────
+      - name: Cargar app y navegar módulos
         env:
+          BASE_URL: http://localhost:8080/
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-        run: |
-          node -e "
-          const { chromium } = require('playwright');
+        run: node .github/scripts/smoke.js
 
-          (async () => {
-            const browser = await chromium.launch({ args: ['--no-sandbox'] });
-            const context = await browser.newContext();
-            const page = await context.newPage();
-
-            // ── Errores globales ──────────────────────────────────────────────
-            const globalErrors = [];
-            page.on('pageerror', err => {
-              globalErrors.push({ modulo: 'global', msg: err.message, stack: err.stack });
-            });
-
-            // ── STEP 1: Login ─────────────────────────────────────────────────
-            console.log('→ Abriendo https://polaquitus.github.io/contratoste/ ...');
-            try {
-              await page.goto('https://polaquitus.github.io/contratoste/', {
-                waitUntil: 'networkidle',
-                timeout: 30000
-              });
-            } catch(e) {
-              console.log('  networkidle timeout, continuando...');
-            }
-
-            try {
-              await page.waitForSelector('#lgUser', { timeout: 20000 });
-            } catch(e) {
-              console.error('LOGIN FALLIDO: #lgUser no apareció en 20s');
-              await browser.close();
-              process.exit(1);
-            }
-
-            await page.fill('#lgUser', process.env.ADMIN_USER || '');
-            await page.fill('#lgPass', process.env.ADMIN_PASSWORD || '');
-            await page.click('button:has-text(\"Ingresar\")');
-
-            try {
-              await page.waitForFunction(
-                () => {
-                  const overlay = document.getElementById('loginOverlay');
-                  return !overlay || overlay.style.display === 'none' || overlay.classList.contains('hidden') || getComputedStyle(overlay).display === 'none';
-                },
-                { timeout: 20000 }
-              );
-            } catch(e) {
-              console.error('LOGIN FALLIDO: loginOverlay no desapareció en 20s');
-              await page.screenshot({ path: 'screenshot-login-fallo.png' });
-              await browser.close();
-              process.exit(1);
-            }
-
-            const loggedIn = await page.evaluate(() =>
-              !!(document.getElementById('vList') || document.getElementById('vDashboard'))
-            );
-            if (!loggedIn) {
-              console.error('LOGIN FALLIDO: no se encontró #vList ni #vDashboard');
-              await page.screenshot({ path: 'screenshot-login-fallo.png' });
-              await browser.close();
-              process.exit(1);
-            }
-            console.log('✓ Login exitoso');
-
-            // ── STEP 2: Navegar módulos ───────────────────────────────────────
-            const modulos = [
-              { nombre: 'Contratos',   selector: \"[data-mod='list']\"      },
-              { nombre: 'Indices',     selector: \"[data-mod='idx']\"       },
-              { nombre: 'Dashboard',   selector: \"[data-mod='dashboard']\" },
-              { nombre: 'Proveedores', selector: \"[data-mod='prov']\"      }
-            ];
-
-            const resultados = [];
-
-            for (const mod of modulos) {
-              const modErrors = [];
-              const modConsole = [];
-
-              const onPageError = err => modErrors.push(err.message);
-              const onConsole = msg => {
-                if (msg.type() === 'error') modConsole.push(msg.text());
-              };
-
-              page.on('pageerror', onPageError);
-              page.on('console', onConsole);
-
-              try {
-                console.log('  → Navegando: ' + mod.nombre + ' (' + mod.selector + ')');
-                await page.click(mod.selector, { timeout: 8000 });
-                await page.waitForTimeout(3000);
-                await page.screenshot({ path: 'screenshot-' + mod.nombre.toLowerCase() + '.png' });
-                console.log('    ✓ Screenshot capturado');
-              } catch(e) {
-                modErrors.push('Error al navegar: ' + e.message);
-                console.log('    ✗ Error: ' + e.message);
-                try { await page.screenshot({ path: 'screenshot-' + mod.nombre.toLowerCase() + '-error.png' }); } catch(_) {}
-              }
-
-              page.removeListener('pageerror', onPageError);
-              page.removeListener('console', onConsole);
-
-              resultados.push({
-                nombre: mod.nombre,
-                jsErrors: modErrors,
-                consoleErrors: modConsole
-              });
-            }
-
-            await browser.close();
-
-            // ── STEP 3: Reporte final ─────────────────────────────────────────
-            console.log('');
-            console.log('=== REPORTE FINAL ===');
-            let totalErrores = 0;
-
-            for (const r of resultados) {
-              const errCount = r.jsErrors.length + r.consoleErrors.length;
-              totalErrores += errCount;
-              if (errCount === 0) {
-                console.log('✓ ' + r.nombre + ': sin errores');
-              } else {
-                console.log('✗ ' + r.nombre + ': ' + errCount + ' error(es)');
-                r.jsErrors.forEach(e => console.log('    [JS] ' + e));
-                r.consoleErrors.forEach(e => console.log('    [console] ' + e));
-              }
-            }
-
-            if (globalErrors.length > 0) {
-              console.log('✗ Errores globales: ' + globalErrors.length);
-              globalErrors.forEach(e => console.log('    ' + e.msg));
-              totalErrores += globalErrors.length;
-            }
-
-            console.log('');
-            if (totalErrores > 0) {
-              console.error('FALLO: ' + totalErrores + ' error(es) JS encontrados.');
-              process.exit(1);
-            }
-            console.log('✓ Todos los módulos OK — ' + resultados.length + ' módulos visitados sin errores JS.');
-            process.exit(0);
-          })().catch(err => {
-            console.error('Error inesperado en el test:', err.message);
-            process.exit(1);
-          });
-          "
-
-      # ── 5. Upload screenshots ─────────────────────────────────────────────
+      # ── 7. Upload screenshots ────────────────────────────────────────────
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -214,14 +100,14 @@ jobs:
           path: screenshot-*.png
           if-no-files-found: ignore
 
-      # ── 5. Resumen final ─────────────────────────────────────────────────
+      # ── 8. Resumen final ─────────────────────────────────────────────────
       - name: Resumen
         if: always()
         run: |
           echo ""
           echo "============================================"
-          echo "  Contratos TA — Test completado"
-          echo "  Repo: polaquitus/contratoste"
+          echo "  Contratos TA v2 — Test completado"
+          echo "  Repo: polaquitus/contratoste-v2"
           echo "  Commit: ${{ github.sha }}"
           echo "  Rama: ${{ github.ref_name }}"
           echo "============================================"

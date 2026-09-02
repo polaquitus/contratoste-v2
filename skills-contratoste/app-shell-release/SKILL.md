@@ -162,20 +162,25 @@ enriquecido"**. Todo atajo nuevo tiene que ignorar eventos con foco en `input`, 
 - `index.html` manda `Cache-Control: no-cache, no-store, must-revalidate` por `<meta>` — por eso
   el HTML se refresca pero **los `.js` no**, y por eso existe el `?v=`.
 
-### 5.1 — 🔴 El CI de este repo prueba OTRA APLICACIÓN
+### 5.1 — El CI: qué prueba y qué no
 
-`.github/workflows/test.yml` corre en `branches: ["**"]` pero:
+`.github/workflows/test.yml` corre en `branches: ["**"]` y desde `v188-fix-ci-y-num-nulo`:
 
-1. **Navega a `https://polaquitus.github.io/contratoste/`** (línea 80) — la producción del
-   **otro repo**, `contratoste`. Este es `contratoste-v2`. Lo que testea no es tu código, ni
-   siquiera es esta aplicación.
-2. **Clickea `data-mod='dashboard'` y `data-mod='prov'`** (líneas 130‑131) — módulos que **no
-   existen en el `index.html` de v2** (verificado: 0 ocurrencias). Aunque lo apuntaras a v2,
-   fallaría en 2 de los 4 módulos que prueba.
-3. **No verifica ni un número.** Solo ausencia de errores JS.
+1. **Sirve el árbol de ESTE commit** en `localhost:8080` (`python3 -m http.server`) y apunta el
+   test ahí. Antes navegaba a `https://polaquitus.github.io/contratoste/` — la producción de
+   **otro repo** — así que un push testeaba código ajeno y el verde no decía nada.
+2. **Verifica que cada módulo declarado exista en el DOM antes de clickearlo**
+   (`.github/scripts/smoke.js`, `MODULOS`). El test viejo clickeaba `dashboard` y `prov`, que ya
+   no existen en v2, y lo reportaba como error de navegación en vez de como test desactualizado.
+3. **Chequea el cache-busting**: falla si algún archivo de `src/` se carga sin `?v=`.
+4. **Sin `ADMIN_USER`/`ADMIN_PASSWORD`** hace la carga y la verificación de módulos, y saltea
+   login y navegación avisando — en vez de fallar por una causa que no es del código.
 
-> **El verde del CI en este repo no significa absolutamente nada.** No lo cites como evidencia.
-> Arreglarlo es la pieza de infraestructura con mejor relación valor/esfuerzo pendiente.
+> **Lo que el CI todavía NO hace: verificar un número.** No comprueba ni un AVE, ni un Ko, ni un
+> plazo. Un verde significa "la app carga y los módulos existen", nada más. Sigue sin ser
+> evidencia de que un cálculo esté bien.
+>
+> Si recortás o agregás un módulo, actualizá `MODULOS` en `.github/scripts/smoke.js`.
 
 ---
 
@@ -189,6 +194,7 @@ enriquecido"**. Todo atajo nuevo tiene que ignorar eventos con foco en `input`, 
 | H‑06 `022b204` | La omnibúsqueda devolvía contratos sin relación | Fuzzy demasiado permisivo para IDs numéricos |
 | H‑07 `022b204` | "por [object Object]" | `nowUser()` devolvía el objeto entero |
 | `86d895b` | El badge saltaba de v187 a v86 | 3 literales hardcodeados → resuelto con `_REAL_BUILD_TAG` |
+| `v188` | El CI probaba la producción de otro repo y clickeaba módulos inexistentes | Ver §5.1 |
 
 ---
 

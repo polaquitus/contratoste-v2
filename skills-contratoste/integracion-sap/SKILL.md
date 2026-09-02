@@ -56,6 +56,18 @@ if(val && window.DB.some(x => x.id!==id && x.num===val)){ toast('Ese N° ya est�
 > Si necesitás `num` (porque cruzás con SAP o con POs), **manejá explícitamente el caso nulo** y
 > decí en pantalla que el dato no está disponible — nunca lo dejes desaparecer en silencio.
 
+**Herramientas para eso** (`03-utils.js:690-701`, desde `v188-fix-ci-y-num-nulo`):
+
+| Helper | Uso |
+|---|---|
+| `tieneNumSap(c)` | `true` si el contrato tiene un N° no vacío. Usalo para ramificar. |
+| `numLabel(c)` | HTML: el número, o el badge **SIN N°** con tooltip. Para tablas y encabezados. |
+| `numLabelText(c)` | Texto plano: el número, o `'SIN N° SAP'`. Para títulos y `<title>`. |
+
+`getConsumed` y `getObraConsumedSplit` ahora **guardan explícitamente** el caso del `num` vacío
+antes de tocar `ME2N`. Siguen devolviendo `null`, pero el llamador tiene que distinguir los dos
+motivos al avisar — como hace el burn rate (`09-patch.js:749-753`).
+
 ### 1.2 — El permiso vive en el rol
 
 ```js
@@ -185,6 +197,16 @@ Cuando un AVE se genera con scope OBRA se guarda `obraAvanceSnapshot` con el % u
 automático, para poder auditar de dónde salió el número.
 
 > `2026-08-07` separó **avance vs. adicionales** en los widgets: no son lo mismo y no se suman.
+
+**Sobre el `num` nulo y el avance de obra — la distinción importa:**
+
+| Contexto | Con `num` nulo | ¿Correcto? |
+|---|---|---|
+| **Mostrar** "Avance obra 0%" en la UI | Se lee como un hecho medido | ❌ era falso → ahora dice `sin N° SAP` (`04:806-807`) |
+| **Calcular** `computeObraAvanceCert` (`04:3147`) | `avancePct=0`, `pendientePct=100` | ✅ **correcto**: sin POs certificadas, el ajuste corresponde sobre el total |
+
+No "arregles" `computeObraAvanceCert` para que devuelva `null` con `num` nulo: cambiarías la
+base de un cálculo de AVE. El 100% pendiente es la respuesta conservadora y correcta.
 
 ### 5.3 — Vendors
 

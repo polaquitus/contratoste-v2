@@ -187,10 +187,13 @@ emergencia, no un TC — si aparece en pantalla, el Master de Índices no cargó
 
 ### 4.8 — ⚠️ El contrato puede no tener número (v2)
 
-Desde `dac71bc`, un contrato se crea **sin `num`**: lo asigna SAP después. `getConsumed(c.num)`
-(`04:1732`) con `num` nulo devuelve `null` → **el burn rate desaparece en silencio**. No es un
-bug de esta área, pero afecta todo render que combine monto y consumo. Ver skill
-`integracion-sap` §4.
+Desde `dac71bc`, un contrato se crea **sin `num`**: lo asigna SAP después, y `getConsumed`
+devuelve `null`. No es un bug de esta área, pero afecta todo render que combine monto y consumo.
+
+Desde `v188-fix-ci-y-num-nulo` hay helpers para esto: `tieneNumSap(c)`, `numLabel(c)` y
+`numLabelText(c)` (`03-utils.js:690-701`). **Todo render nuevo que muestre el N° tiene que
+usarlos**, para que "sin N°" se vea como tal y no como un dato faltante. Ver skill
+`integracion-sap` §1.1.
 
 ---
 

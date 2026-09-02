@@ -131,8 +131,8 @@ Son las candidatas más probables al próximo bug.
 
 | # | Hallazgo | Detalle |
 |---|---|---|
-| **N1** 🔴 | **`c.num` puede ser `null` y sigue usándose como clave** | Desde `dac71bc` el contrato se crea sin número. `getConsumed(c.num)` → `ME2N[null]` → `undefined` → **el burn rate desaparece en silencio**. También afecta `ME2N[c.num]` (`04:798`, `04:1874`), el dedupe del import (`06:100`) y la validación de unicidad (`03:405`). Los 4 commits que introdujeron el ciclo **no auditaron esos sitios**. → skill `integracion-sap` §1.1 |
-| **N2** 🔴 | **El CI prueba otra aplicación** | `.github/workflows/test.yml:80` navega a `https://polaquitus.github.io/contratoste/` — la producción del **otro repo**. Y clickea `data-mod='dashboard'` y `data-mod='prov'` (líneas 130‑131), módulos que **no existen** en el `index.html` de v2 (0 ocurrencias). El verde no significa nada. → skill `app-shell-release` §5.1 |
+| **N1** ✅ | **`c.num` puede ser `null`** — resuelto en `v188-fix-ci-y-num-nulo` | Desde `dac71bc` el contrato se crea sin número. `getConsumed(c.num)` → `ME2N[null]` → `undefined` → **el burn rate desaparece en silencio**. También afecta `ME2N[c.num]` (`04:798`, `04:1874`), el dedupe del import (`06:100`) y la validación de unicidad (`03:405`). Los 4 commits que introdujeron el ciclo no auditaron esos sitios. **Fix:** guardas explícitas en `getConsumed`/`getObraConsumedSplit`, helpers `tieneNumSap`/`numLabel`/`numLabelText` (`03-utils.js:690-701`), badge **SIN N°** en el listado, y mensajes que distinguen "sin N° SAP" de "sin POs". → skill `integracion-sap` §1.1 |
+| **N2** ✅ | **El CI probaba otra aplicación** — resuelto en `v188-fix-ci-y-num-nulo` | `.github/workflows/test.yml:80` navega a `https://polaquitus.github.io/contratoste/` — la producción del **otro repo**. Y clickea `data-mod='dashboard'` y `data-mod='prov'` (líneas 130‑131), módulos que **no existen** en el `index.html` de v2 (0 ocurrencias). **Fix:** el workflow sirve el árbol del commit en `localhost:8080` y apunta ahí; el test vive en `.github/scripts/smoke.js`, con la lista de módulos real de v2 y una verificación que **falla** si un módulo declarado no existe en el DOM. → skill `app-shell-release` §5.1 |
 | **N3** 🟠 | **El esquema del CSV es un contrato con software externo** | Las 13 columnas de `exportContratoSap` las consume `SAP_Contract_Creator.hta`, que **no está en este repo**. Cambiar el orden lo rompe y no se puede arreglar desde acá. → skill `integracion-sap` §3 |
 
 ---
@@ -143,7 +143,7 @@ No son bugs de código y **ninguna skill los arregla**.
 
 | # | Riesgo | Detalle |
 |---|---|---|
-| **I1** | **El CI prueba otra app** | Ver N2. Es el problema de infraestructura más grave y el más barato de arreglar. |
+| **I1** | ~~El CI prueba otra app~~ | ✅ Resuelto (N2). Queda pendiente que el CI verifique **números de negocio** (un AVE, un Ko, un plazo), no solo ausencia de errores JS. |
 | **I2** | **Las Edge Functions no están en el repo** | `gemini-proxy` y `energia-proxy` existen solo desplegadas: sin fuente, sin versionado, sin revisión. Un cambio que las necesite **no se puede completar desde el repo**. |
 | **I3** | **El `.hta` de SAP tampoco está** | Mismo problema, con el agravante de que el contrato de interfaz (el CSV) es implícito. |
 | **I4** | **El `anon key` es público** | Servido sin auth. Origen de H‑01 y H‑02. Nada secreto puede vivir en el bundle. |

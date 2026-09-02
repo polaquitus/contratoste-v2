@@ -687,6 +687,18 @@ function fN(n){if(n==null||n==='')return'—';return Number(n).toLocaleString('e
 // viene de una fuente no confiable). Se agrega el escape de comillas acá,
 // una sola vez, para que sea seguro en cualquier contexto.
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// ── N° de contrato: lo asigna SAP DESPUÉS de crearlo (ver skill integracion-sap) ──
+// Desde dac71bc un contrato puede existir sin `num`. La clave real del contrato es
+// `c.id`; `num` solo sirve para cruzar con SAP y con las POs de ME2N. Todo render
+// que muestre el número tiene que usar numLabel()/numLabelText(), para que "sin N°"
+// se vea como tal y no como una celda vacía o un dato que parece faltar.
+function tieneNumSap(c){ return !!(c && String(c.num||'').trim()); }
+function numLabel(c){
+  return tieneNumSap(c)
+    ? esc(c.num)
+    : '<span class="bdg exp" style="font-size:9px" title="El N° de contrato lo asigna SAP — todavía no fue cargado">SIN N°</span>';
+}
+function numLabelText(c){ return tieneNumSap(c) ? String(c.num) : 'SIN N° SAP'; }
 function debounce(fn,ms){let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn.apply(this,args),ms||200);};}
 function fmtCompactNum(v){if(v>=1e9)return (v/1e9).toFixed(2)+'B';if(v>=1e6)return (v/1e6).toFixed(2)+'M';if(v>=1e3)return (v/1e3).toFixed(1)+'k';return Math.round(v).toString();}
 function toast(m,t){const e=document.getElementById('toast');e.textContent=(t==='ok'?'✓ ':'✕ ')+m;e.className='toast '+t;setTimeout(()=>e.classList.add('show'),10);setTimeout(()=>e.classList.remove('show'),3200);}

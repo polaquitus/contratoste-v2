@@ -144,12 +144,12 @@ FADEEAC:         https://www.fadeeac.org.ar/feed/
 
 Detalle completo en `skills-contratoste/REGRESIONES.md` §3, §4 y §5.
 
-1. 🔴 **El CI prueba OTRA aplicación.** `test.yml:80` navega a
-   `https://polaquitus.github.io/contratoste/` — la producción del **otro repo**. Además clickea
-   `data-mod='dashboard'` y `data-mod='prov'`, que no existen acá. **El verde del CI no
-   significa nada.**
-2. 🔴 **`c.num` puede ser `null` y sigue usándose como clave** en 5 sitios. `getConsumed(null)`
-   hace desaparecer el burn rate en silencio.
+1. **El CI ya prueba este commit** (servido en `localhost:8080`) y verifica que los módulos
+   declarados existan — pero **sigue sin verificar ni un número**: ni un AVE, ni un Ko, ni un
+   plazo. Un verde significa "carga y los módulos existen", nada más.
+2. **`c.num` puede ser `null`** — SAP lo asigna después. Ya no desaparece en silencio (helpers
+   `tieneNumSap`/`numLabel`/`numLabelText` en `03-utils.js:690-701`), pero **la clave real del
+   contrato es `c.id`**: toda lógica nueva tiene que usar `id`.
 3. **Edge Functions y el `.hta` fuera del repo** (arriba).
 4. **`anon key` público** — servido sin auth. Nada secreto puede vivir en el bundle
    (origen de H‑01 y H‑02).
