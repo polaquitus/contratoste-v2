@@ -1,112 +1,179 @@
-# Contratos TA — TotalEnergies Argentina
+# Contratos TA v2 — TotalEnergies Argentina
+
+## Skills del proyecto — LEER PRIMERO
+
+Antes de tocar código, cargá la skill del dominio correspondiente desde `skills-contratoste/`.
+Documentan reglas de negocio no obvias, trampas activas y checklists de validación, cada una
+construida sobre los bugs reales que ya ocurrieron en esa área.
+
+| Skill | Cubre |
+|---|---|
+| `ave-ledger` | AVEs, `montoBase`, monto vigente, validaciones AIC/CC |
+| `polinomica-ko` | Fórmula Ko, incidencias, gatillos A/B/C, condiciones |
+| `enmiendas-y-tarifarios` | Enmiendas, tramos, scope, listas de precios, importación con IA |
+| `indices-master` | `IDX_STORE`, fuentes automáticas, validación de plausibilidad |
+| `supabase-datalayer` | Esquema, persistencia, auth, roles y permisos |
+| `app-shell-release` | Navegación, vistas, cache-busting `?v=`, deploy, CI |
+| `integracion-sap` | ME3N/ME2N, CSV para el HTA, **ciclo de vida del N° de contrato** |
+| `REGRESIONES.md` | Catálogo de bugs pasados y causas raíz aún vivas (referencia) |
+
+---
+
+## Qué es este repo
+
+`contratoste-v2` es un **fork de `contratoste`** que diverge en `d8a20c4` (26/08/2026).
+Comparte 252 de sus 261 commits. Las diferencias:
+
+1. **Recorte** (`81fe665`): la app quedó en **Contratos, Purchase Orders, Índices, Usuarios y
+   Legales**. Se fueron Dashboard, Forecast, Alertas, Timeline, Licitaciones y Proveedores.
+2. **Integración SAP** (`1ecacfa` … `4d955a2`): campos SAP, vendor autocompletado, export CSV
+   hacia `SAP_Contract_Creator.hta`, y el N° de contrato asignado por SAP.
+
+**Trabajar solo acá.** `contratoste` quedó como referencia histórica.
+
+---
 
 ## Stack
-- **Frontend:** `index.html` monolítico (~8000+ líneas, HTML/CSS/JS)
+
+- **Frontend:** HTML/CSS/JS sin build. `index.html` (745 líneas: shell + markup) +
+  `src/js/01..11` + `src/css/main.css`
 - **Backend:** Supabase (`https://upxsqroxbvzwudcaklvn.supabase.co`)
-- **Deploy:** GitHub Pages (`https://polaquitos.github.io/contratosite/`)
-- **AI:** Gemini vía Supabase Edge Function `gemini-proxy`
-- **Workflow:** 100% browser, sin herramientas locales
+- **AI:** Gemini vía Edge Function `gemini-proxy` (key server-side)
+- **CI:** `.github/workflows/test.yml` — ⚠️ **roto, ver "Puntos ciegos"**
+
+### Módulos (`src/js/`)
+
+| Archivo | LOC | Contenido |
+|---|---|---|
+| `01-config.js` | 21 | `SB_URL`, `SB_KEY`, globales |
+| `02-supabase-auth.js` | 410 | Capa Supabase (`sbFetch`, `sbUpsert*`), login, `initApp` |
+| `03-utils.js` | 705 | `go()`, `guardar()`, `_REAL_BUILD_TAG`, autocompletado de Vendor |
+| `04-contracts.js` | 3250 | Listado, Detalle, Dossier, **AVEs**, enmiendas, tarifarios, **SAP** |
+| `05-indices.js` | 1749 | Master de Índices y sus fuentes |
+| `06-licit-prov.js` | 942 | Import SAP, import IA de enmiendas, roles + `PATCH v14/v19` |
+| `07-polynomial.js` | 1314 | `PolUpdate`, Ko, condiciones, doc de enmienda |
+| `08-dashboard.js` | 229 | Solo el gráfico de índices (el resto se recortó) |
+| `09-patch.js` | 953 | Parches, burn rate, atajos, búsqueda difusa, borrado en cascada |
+| `10-legales.js` | 769 | Clausulado versionado (13 cláusulas) |
+| `11-word-gen.js` | 135 | Generación de Condiciones Particulares |
+
+**El orden numérico es el grafo de dependencias.** Todo son globals en `window`; no hay bundler
+ni imports. `09-patch.js` **y** los bloques `PATCH v14/v19` al final de `06-licit-prov.js`
+redefinen funciones ya definidas: reordenar rompe parches en silencio.
+
+### Vistas
+
+`vList`, `vForm`, `vDet`, `vMe2n`, `vMe2nDet`, `vIdx`, `vUsersModule`, `vLegalesModule`.
+
+---
 
 ## Reglas críticas al modificar código
 
-1. **NO romper funcionalidad existente** — solo cambios quirúrgicos y precisos
-2. **`plazo` siempre en meses** — fórmula: `total / plazo_meses` (nunca dividir por días)
-3. **Supabase es única fuente de verdad** para índices — no usar localStorage como fallback
-4. **Prioridad de datos:** IDX_STORE (live) > IDX_OFFICIAL_SEED (hardcoded)
-5. **No entrada manual de índices** — toda carga debe ser automatizada
-6. **Modularización es riesgosa** — no refactorizar a múltiples archivos sin aprobación explícita
+1. **NO romper funcionalidad existente** — solo cambios quirúrgicos y precisos.
+2. **`plazo` siempre en meses** — `total / plazo_meses`, con `monthDiffInclusive`. Nunca días.
+3. **Ko es lineal:** `Ko = Σ incᵢ × (1 + varᵢ%/100)`. `Math.pow` en un Ko es el bug H‑13.
+4. **El monto se recalcula, no se acumula:** `monto = montoBase + Σave_poly + Σave_owner`.
+5. **`c.num` puede ser `null`** — SAP lo asigna después. La clave real del contrato es `c.id`.
+6. **Supabase es la única fuente de verdad.** `localStorage` es espejo, nunca autoritativo.
+7. **Prioridad de índices:** `IDX_STORE` (live) > `IDX_OFFICIAL_SEED` (hardcodeado).
+8. **Confirmar antes de avisar:** el toast de éxito va después del `await`, dentro del `try`.
+   El `catch` avisa y revierte.
+9. **Bumpear `?v=`** del archivo tocado en `index.html`. Sin eso, el cambio no se ve.
+10. **Un dato con `needsReview` no entra a un cálculo de AVE.**
+11. **Modularizar más es riesgoso** — no refactorizar sin aprobación explícita.
 
-## Arquitectura del sistema
+---
+
+## Backend
 
 ### Tablas Supabase
-- `indices` — índices económicos (ID activo: 3)
-- `app_users` — usuarios de la aplicación
+
+Todas con el mismo par de columnas: `id` (serial) + `datos` (TEXT con un JSON). Sin esquema
+tipado ni validación del lado del servidor.
+
+| Tabla | Forma |
+|---|---|
+| `contratos`, `contratistas`, `me2n` | 1 fila por ítem |
+| `indices` | **1 sola fila** con todo `IDX_STORE` |
+| `app_users` | usuarios, rol y matriz de permisos |
+
+`licitaciones` sigue en Supabase pero su módulo se recortó.
 
 ### Edge Functions
-- `gemini-proxy` — proxy para Gemini AI
-- `energia-proxy` — proxy para datos.energia.gob.ar (CORS bypass)
-- `super-responder` — uso general
 
-### Estructura IDX_STORE
+Referenciadas desde el código: `gemini-proxy` (2 usos) y `energia-proxy` (5 usos).
+
+⚠️ **No están en este repo.** Existen solo desplegadas. Un cambio que las necesite no se puede
+completar desde acá — decilo explícitamente.
+
+### Software externo
+
+`SAP_Contract_Creator.hta` consume el CSV de 13 columnas que genera `exportContratoSap`.
+**Tampoco está en el repo**, y el esquema de columnas es un contrato de interfaz implícito.
+
+---
+
+## Índices
+
+`IDX_CATALOG` (`05-indices.js:1`) — **18 índices**: 5 IPC · 3 IPIM · 1 combustible (`go_g3`) ·
+1 USD (`usd_div`) · 8 Mano de Obra (`mo_pp`, `mo_pj`, `mo_uocra`, `mo_uocrayac`, `mo_com`,
+`mo_cam`, `mo_uom10`, `mo_uom17`).
+
+`usd_bill` está comentado a pedido del usuario; `go_g2` ya no existe. `ipim_r29` sigue en
+`fetchMode:'manual'` porque la API de INDEC devuelve 400 para su serie.
+
 ```javascript
-{
-  "ipc_nac": {
-    "rows": [
-      { "ym": "2024-01", "pct": 20.6, "value": 9200.34, "source": "INDEC", "confirmed": false }
-    ]
-  },
-  "usd_div": {
-    "rows": [
-      { "ym": "2024-01", "value": 828.25, "pct": null, "source": "BNA" }
-    ]
-  }
-}
+IDX_STORE = { ipc_nac: { rows: [{ym, pct, value, confirmed, source, needsReview, ...}] } }
 ```
 
-## Catálogo de índices (IDX_CATALOG)
-```javascript
-[
-  {id:'ipc_nac',   name:'IPC Nacional',           src:'INDEC',      seriesId:'148.3_INIVELNAL_DICI_M_26'},
-  {id:'ipc_gba',   name:'IPC GBA',                src:'INDEC',      seriesId:'148.3_INIVELGBA_DICI_M_21'},
-  {id:'ipc_pat',   name:'IPC Patagonia',           src:'INDEC',      seriesId:'148.3_INIVELNIA_DICI_M_27'},
-  {id:'ipc_nqn',   name:'IPC NQN',                src:'DPEyC NQN',  seriesId:null},
-  {id:'ipc_nqnab', name:'IPC NQN Alim y Beb',     src:'DPEyC NQN',  seriesId:null},
-  {id:'ipim_gral', name:'IPIM General',            src:'INDEC',      seriesId:'448.1_NIVEL_GENERAL_0_0_13_46'},
-  {id:'ipim_r29',  name:'IPIM R29 Refinados',      src:'INDEC',      seriesId:'PENDIENTE - error 400'},
-  {id:'fadeaac',   name:'FADEAAC Equipo Vial',     src:'FADEAAC',    seriesId:null},
-  {id:'go_g3',     name:'Gas Oil G3 YPF NQN',      src:'S.Energía',  seriesId:null},
-  {id:'go_g2',     name:'Gas Oil G2 YPF NQN',      src:'S.Energía',  seriesId:null},
-  {id:'usd_div',   name:'USD DIVISA BNA',          src:'BCRA',       seriesId:null},
-  {id:'usd_bill',  name:'USD BILLETE BNA',         src:'BCRA',       seriesId:null}
-]
-```
+### APIs
 
-## APIs de datos
 ```
 INDEC series:    https://apis.datos.gob.ar/series/api/series?ids={id}&format=json&start_date={ym}
+INDEC CSV:       https://www.indec.gob.ar/ftp/cuadros/economia/indice_ipim.csv
 ArgentinaDatos:  https://api.argentinadatos.com/v1/cotizaciones/dolares/oficial
-Energía CKAN:    https://datos.energia.gob.ar/api/3/action/datastore_search?resource_id={id}&limit=32000
-  → Histórico resource_id: f8dda0d5-2a9f-4d34-b79b-4e63de3995df
-  → Vigentes resource_id:  80ac25de-a44a-4445-9215-090cf55cfda5
-  → IMPORTANTE: usar energia-proxy (certificado SSL vencido en datos.energia.gob.ar)
+Energía CKAN:    resource_id histórico f8dda0d5-2a9f-4d34-b79b-4e63de3995df
+                 resource_id vigentes  80ac25de-a44a-4445-9215-090cf55cfda5
+                 → SIEMPRE vía energia-proxy (certificado SSL vencido en el origen)
+FADEEAC:         https://www.fadeeac.org.ar/feed/
 ```
 
-## Estado actual de índices en Supabase (registro ID: 3)
-```
-✅ ipc_nac:   28 períodos (Dic 2023 → Mar 2026)
-✅ ipc_gba:   28 períodos
-✅ ipc_pat:   28 períodos
-✅ ipc_nqn:   parcial vía AI
-✅ ipim_gral: 28 períodos
-❌ ipim_r29:  sin datos (API INDEC error 400)
-✅ fadeaac:   5 períodos vía AI
-✅ usd_div:   29 períodos (Dic 2023 → Abr 2026)
-✅ usd_bill:  29 períodos
-⚠️ go_g2:    7 períodos (incompleto)
-⚠️ go_g3:    7 períodos (incompleto)
-```
+---
 
-## Módulos de index.html
-- `vContratos` — listado y detalle de contratos
-- `vIndices` — gestión de índices económicos (`renderIdxCards()`)
-- `vUsers` — administración de usuarios (CRUD parcial)
-- `vLicitaciones` — licitaciones
-- `vProveedores` — proveedores
-- Sistema de roles: `ROLE_DEFAULTS` / `canAccess` / `applyPermissions` / `applyRolePermissions`
-- Fórmulas polinómicas: `Ko` (coeficiente de ajuste), `autoScanFirstMatch()`, gatillos de redeterminación
-- Migración condiciones: `migrateFromGatillos()` (dos fuentes: `contract.gatillos` y `localStorage`)
+## Puntos ciegos conocidos
 
-## Archivos auxiliares en el repo
-- `carga_historica.html` — carga masiva INDEC histórico
-- `carga_gasoil.html` — carga Gas Oil vía energia-proxy + Gemini fallback
-- `usd_argentinadatos.html` — carga USD desde BNA API
-- `indices.html` — herramienta original (bugs de scope conocidos)
+Detalle completo en `skills-contratoste/REGRESIONES.md` §3, §4 y §5.
 
-## Pendientes prioritarios
-1. **Gas Oil completo** — `carga_gasoil.html` necesita cargar 28+ períodos (actualmente 7)
-2. **IPIM R29** — encontrar seriesId correcto en API INDEC
-3. **Módulo actualización mensual** en `index.html` — botón que ejecute todas las fuentes automáticamente
-4. **User admin CRUD** — completar módulo `vUsers` contra tabla `app_users`
+1. 🔴 **El CI prueba OTRA aplicación.** `test.yml:80` navega a
+   `https://polaquitus.github.io/contratoste/` — la producción del **otro repo**. Además clickea
+   `data-mod='dashboard'` y `data-mod='prov'`, que no existen acá. **El verde del CI no
+   significa nada.**
+2. 🔴 **`c.num` puede ser `null` y sigue usándose como clave** en 5 sitios. `getConsumed(null)`
+   hace desaparecer el burn rate en silencio.
+3. **Edge Functions y el `.hta` fuera del repo** (arriba).
+4. **`anon key` público** — servido sin auth. Nada secreto puede vivir en el bundle
+   (origen de H‑01 y H‑02).
+5. **Auth client-side** con `sha256Hex` contra `app_users`. Sin RLS. La migración a Edge
+   Function se preparó y se descartó (`2cdc9c5`).
+6. **`localStorage` como fuente de verdad de facto** — 90 usos, 16 claves. Todo el estado del
+   panel polinómico vive solo ahí: no es multi‑dispositivo.
+7. **Sin paginación** — `sbLoadTable` corta en 2000 filas, en silencio.
+8. **Duplicaciones activas** — Ko en 4 implementaciones, `montoBase` en 6 sitios, lista de
+   vistas en 3 (divergentes), mapa label→id en 2, resolutor de tarifario en 2.
 
-## Convenciones de versión
-El header de `index.html` muestra la versión actual (ej: v0.221). Incrementar al hacer cambios.
+---
+
+## Archivos auxiliares
+
+- `carga_gasoil.html` — carga Gas Oil vía `energia-proxy` + fallback Gemini
+
+---
+
+## Convenciones
+
+- **Versión:** `index.html:34` (`sbVerBadge`) y `:64` (`buildTag`, formato `v<N>-<slug>`).
+  Incrementar al hacer cambios visibles. Todo código que escriba `buildTag` debe leer
+  `_REAL_BUILD_TAG` (`03-utils.js:5`), nunca un literal.
+- **Cache-busting:** `?v=` independiente por archivo en `index.html:368-398`.
+- **Commits:** en español, describiendo el *síntoma* y la *causa raíz*, no solo el archivo
+  tocado. El historial es la principal fuente de contexto de este proyecto.
