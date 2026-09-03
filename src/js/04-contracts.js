@@ -1827,7 +1827,14 @@ function purgeMe2n(){
 function buildPlantFilter(){
   const sel=document.getElementById('poPlant');if(!sel)return;
   const plants=new Set();
-  for(const[oa,d]of Object.entries(ME2N)){d[2].forEach(p=>{if(p[2])plants.add(p[2]);});}
+  // Misma guarda que renderMe2n(): ME2N viene de sbLoadSingle(), que le inyecta
+  // __sbId (un número) como clave extra. Sin este filtro, d[2] es undefined y el
+  // .forEach tira, dejando el desplegable de Plants vacío en cada visita.
+  for(const[oa,d]of Object.entries(ME2N)){
+    if(!oa||oa==='SIN_CTTO')continue;
+    if(!d||!Array.isArray(d)||!Array.isArray(d[2]))continue;
+    d[2].forEach(p=>{if(p&&p[2])plants.add(p[2]);});
+  }
   const cur=sel.value;
   let h='<option value="">Todas las Plants</option>';
   [...plants].sort().forEach(p=>h+=`<option value="${p}">${plantLabel(p)}</option>`);

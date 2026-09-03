@@ -112,15 +112,16 @@ Son las candidatas más probables al próximo bug.
 
 | # | Causa estructural | Evidencia en v2 | Bug que produjo |
 |---|---|---|---|
-| **C1** | Fórmula Ko en **4 implementaciones** sin función compartida | `07:117`, `07:274`, `07:631`, `04:2399` | H‑13 |
+| **C1** | Fórmula Ko en **4 implementaciones** sin función compartida | `07:117`, `07:274`, `07:631`, `04:2406` | H‑13 |
 | **C2** | Derivación de `montoBase` copiada en **6 sitios** | `04:94,428,550,3067`, `07:763`, `09:754` | doble conteo 2026‑07‑22 |
 | **C3** | Lista de IDs de vista copiada en **3 lugares**, una con distinto contenido | `03:181` (6 ids) vs `06:911` y `10:662` (8 ids) | H‑05 |
 | **C4** | Mapa label→id de índices duplicado | `05:228`, `03:55` | `ffee2bd` |
-| **C5** | Dos resolutores de "tarifario vigente al período" | `04:1892`, `04:1965` | `f11eaff` |
-| **C6** | **Tres** rutas de escritura del ledger, inconsistentes | `04:2797` ✅, `04:2930` ⚠️, `07:182` ⚠️ | latente |
+| **C5** | Dos resolutores de "tarifario vigente al período" | `04:1899`, `04:1972` | `f11eaff` |
+| **C6** | **Tres** rutas de escritura del ledger, inconsistentes | `04:2804` ✅, `04:2937` ⚠️, `07:182` ⚠️ | latente |
 | **C7** | `checkConditions` (`07:62`) conserva la lógica pre‑`1a491e7` y sigue **exportada** | `07:83`, export en `07:206` | latente |
 | **C8** | `computePoliDeltaPct` **no** filtra `needsReview`; `calculateUpdate` sí | `07:644` vs `07:137` | latente |
 | **C10** | Dos capas de parches en lugares distintos | final de `06-licit-prov.js` + `09-patch.js` | confusión al buscar |
+| **C11** | La estructura de `ME2N` se valida en **2 funciones de la misma vista**, sin helper común | `04:1851` (blindada) vs `04:1833` (blindada recién en `v189`) | **N4** |
 
 > **C9** (`buildTag` hardcodeado) fue **resuelto** en `86d895b` con `_REAL_BUILD_TAG`. Se deja
 > anotado para que nadie reintroduzca un literal.
@@ -131,9 +132,10 @@ Son las candidatas más probables al próximo bug.
 
 | # | Hallazgo | Detalle |
 |---|---|---|
-| **N1** ✅ | **`c.num` puede ser `null`** — resuelto en `v188-fix-ci-y-num-nulo` | Desde `dac71bc` el contrato se crea sin número. `getConsumed(c.num)` → `ME2N[null]` → `undefined` → **el burn rate desaparece en silencio**. También afecta `ME2N[c.num]` (`04:798`, `04:1874`), el dedupe del import (`06:100`) y la validación de unicidad (`03:405`). Los 4 commits que introdujeron el ciclo no auditaron esos sitios. **Fix:** guardas explícitas en `getConsumed`/`getObraConsumedSplit`, helpers `tieneNumSap`/`numLabel`/`numLabelText` (`03-utils.js:690-701`), badge **SIN N°** en el listado, y mensajes que distinguen "sin N° SAP" de "sin POs". → skill `integracion-sap` §1.1 |
+| **N1** ✅ | **`c.num` puede ser `null`** — resuelto en `v188-fix-ci-y-num-nulo` | Desde `dac71bc` el contrato se crea sin número. `getConsumed(c.num)` → `ME2N[null]` → `undefined` → **el burn rate desaparece en silencio**. También afecta `ME2N[c.num]` (`04:798`, `04:1881`), el dedupe del import (`06:100`) y la validación de unicidad (`03:405`). Los 4 commits que introdujeron el ciclo no auditaron esos sitios. **Fix:** guardas explícitas en `getConsumed`/`getObraConsumedSplit`, helpers `tieneNumSap`/`numLabel`/`numLabelText` (`03-utils.js:690-701`), badge **SIN N°** en el listado, y mensajes que distinguen "sin N° SAP" de "sin POs". → skill `integracion-sap` §1.1 |
 | **N2** ✅ | **El CI probaba otra aplicación** — resuelto en `v188-fix-ci-y-num-nulo` | `.github/workflows/test.yml:80` navega a `https://polaquitus.github.io/contratoste/` — la producción del **otro repo**. Y clickea `data-mod='dashboard'` y `data-mod='prov'` (líneas 130‑131), módulos que **no existen** en el `index.html` de v2 (0 ocurrencias). **Fix:** el workflow sirve el árbol del commit en `localhost:8080` y apunta ahí; el test vive en `.github/scripts/smoke.js`, con la lista de módulos real de v2 y una verificación que **falla** si un módulo declarado no existe en el DOM. → skill `app-shell-release` §5.1 |
 | **N3** 🟠 | **El esquema del CSV es un contrato con software externo** | Las 13 columnas de `exportContratoSap` las consume `SAP_Contract_Creator.hta`, que **no está en este repo**. Cambiar el orden lo rompe y no se puede arreglar desde acá. → skill `integracion-sap` §3 |
+| **N4** ✅ | **`__sbId` se cuela en `ME2N` como si fuera un contrato** — resuelto en `v189-fix-filtro-plants`. **Lo encontró el CI**, en el primer run que ejercitó login. | `sbLoadSingle()` inyecta `o.__sbId = rows[0].id` (`02-supabase-auth.js:19`) y `ME2N` **es** ese objeto (`02:237-238`), así que queda con una clave extra cuyo valor es un **número**. `renderMe2n()` lo filtra (`04:1851`, con comentario `// Validar estructura`); `buildPlantFilter()`, **ocho líneas más arriba y en la misma vista**, no: `d[2].forEach(…)` sobre `d=7` tiraba `TypeError`. Como `go('me2n')` llama a las dos (`03-utils.js:229-230`), **el filtro de Plants quedaba vacío en cada visita a Purchase Orders**. Es **C11**: alguien endureció una función y no tocó su hermana. **Fix:** la misma guarda en `buildPlantFilter`, más la regla de negocio «`__sbId` no rompe el filtro de Plants» en el CI. → skill `supabase-datalayer` §1.2 |
 
 ---
 

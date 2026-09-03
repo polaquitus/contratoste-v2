@@ -172,6 +172,34 @@ caso('Incidencias: 60+30 no valida; 60+40 sí',
   return null;
 });
 
+// ── 7. __sbId no es un contrato ───────────────────────────────────────
+// sbLoadSingle() le inyecta __sbId al objeto que devuelve (02-supabase-auth.js:19),
+// así que ME2N queda con una clave extra cuyo valor es un NÚMERO, mezclada entre
+// los contratos. renderMe2n() lo filtra; buildPlantFilter(), ocho líneas más
+// arriba, no lo hacía: el .forEach sobre d[2] tiraba y el desplegable de Plants
+// quedaba vacío en cada visita a Purchase Orders.
+caso('ME2N: la clave __sbId no rompe el filtro de Plants',
+     'supabase-datalayer §1.2 · hallado por el CI 2026-09-03', () => {
+  if (!document.getElementById('poPlant')) return 'no existe el <select id="poPlant">';
+  const backup = ME2N;
+  try {
+    // Exactamente lo que arma sbLoadSingle: los contratos + __sbId numérico.
+    ME2N = {
+      'AO-1': ['desc', 'ARS', [['PO-1', '', 'P100', 10, 0]]],
+      'AO-2': ['desc', 'ARS', [['PO-2', '', 'P200', 20, 0]]],
+      __sbId: 7,
+    };
+    try { buildPlantFilter(); }
+    catch (e) { return 'buildPlantFilter() tiró: ' + e.message + ' (¿volvió a iterar __sbId?)'; }
+    const opts = [...document.getElementById('poPlant').options].map(o => o.value);
+    if (!opts.includes('P100') || !opts.includes('P200'))
+      return 'el filtro quedó sin las plants reales: ' + JSON.stringify(opts);
+    if (opts.includes('7') || opts.includes('__sbId'))
+      return '__sbId se coló como una plant: ' + JSON.stringify(opts);
+    return null;
+  } finally { ME2N = backup; }
+});
+
 // ── runner ──────────────────────────────────────────────────────────────────
 (async () => {
   const browser = await chromium.launch({

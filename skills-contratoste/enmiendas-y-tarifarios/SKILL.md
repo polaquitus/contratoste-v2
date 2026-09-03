@@ -70,7 +70,7 @@ Los helpers lo cubren; el acceso directo no.
 ### 2.2 — Nivel superior = último tramo
 
 `basePeriodo`, `nuevoPeriodo`, `pctPoli` y `polyTerms` al nivel de la enmienda son un **espejo
-del último tramo** (`04-contracts.js:2698-2700,2712`), puesto ahí para compatibilidad con
+del último tramo** (`04-contracts.js:2705-2700,2712`), puesto ahí para compatibilidad con
 listados y generación de documentos. **El detalle real está en `tramos[]`.**
 
 > Si una enmienda multi‑tramo te muestra un solo período, estás leyendo el espejo en vez de
@@ -99,14 +99,14 @@ actualización se llaman `TARIFARIO FINAL (Enm.N)`. Agrupar por nombre partía *
 evolutivo** en dos series inconexas.
 
 `guardarEnm` deriva el nombre nuevo quitando el sufijo previo y reponiéndolo
-(`04-contracts.js:2718-2719`), así que el nombre **cambia entre generaciones por diseño**.
+(`04-contracts.js:2725-2719`), así que el nombre **cambia entre generaciones por diseño**.
 
 ### 3.2 — ⚠️ Dos resolutores de "tarifario vigente al período", duplicados
 
 | Función | Ubicación | Diferencia |
 |---|---|---|
-| `getApplicableTariffs(cc, period)` | `04-contracts.js:1892` | Tiene fallback a tablas **sin** `period` |
-| `scopeTablasDisponibles(cc, asOfPeriod)` | `04-contracts.js:1965` | Devuelve `[]` si ninguna tiene `period`; envuelve en `{name, idx, table}` |
+| `getApplicableTariffs(cc, period)` | `04-contracts.js:1899` | Tiene fallback a tablas **sin** `period` |
+| `scopeTablasDisponibles(cc, asOfPeriod)` | `04-contracts.js:1972` | Devuelve `[]` si ninguna tiene `period`; envuelve en `{name, idx, table}` |
 
 Ambas hacen lo mismo: **tomar la generación con el `period` más alto que no supere el período
 pedido, y devolver TODAS las tablas de esa generación.** Si tocás una, revisá la otra.
@@ -117,7 +117,7 @@ pedido, y devolver TODAS las tablas de esa generación.** Si tocás una, revisá
 
 ## 4. `guardarEnm` — el orden importa
 
-`04-contracts.js:2602`. Es la función más delicada del repo:
+`04-contracts.js:2609`. Es la función más delicada del repo:
 
 ```
 1. Leer los conceptos tildados          getEnmTiposSeleccionados()
@@ -153,7 +153,7 @@ Nunca restes meses a mano — queda 1 mes corta.
 
 ### 4.3 — Alcance (SCOPE)
 
-- `MAYOR` y `MENOR` son **excluyentes** (`04-contracts.js:2011`): mayor solo **agrega**, menor
+- `MAYOR` y `MENOR` son **excluyentes** (`04-contracts.js:2018`): mayor solo **agrega**, menor
   solo **quita**. Nunca las dos secciones a la vez.
 - Una enmienda de scope **puede ser solo texto**. Período y tabla son obligatorios **solo si**
   hay items marcados.
@@ -163,7 +163,7 @@ Nunca restes meses a mano — queda 1 mes corta.
 
 ### 4.4 — Corrección de enmienda (`superseded`)
 
-`04-contracts.js:2691-2694`:
+`04-contracts.js:2698-2694`:
 
 ```js
 oe.superseded = true;  oe.supersededBy = num;
@@ -182,7 +182,7 @@ Una enmienda `superseded` **sigue existiendo** pero queda **excluida de todo cá
 ### 4.5 — Texto enriquecido
 
 `CLAUSULAS`, `SCOPE` y `OTRO` usan un editor `contenteditable`. El HTML pasa por
-`sanitizeRichText` (`04-contracts.js:1941`), whitelist estricta: `B, STRONG, I, EM, U, OL, UL,
+`sanitizeRichText` (`04-contracts.js:1948`), whitelist estricta: `B, STRONG, I, EM, U, OL, UL,
 LI, BR, P, DIV`, sin atributos.
 
 Es **la única defensa** contra XSS almacenado en ese camino: el contenido se inserta **sin
@@ -196,7 +196,7 @@ escapar** en el Word/HTML generado.
 
 ### 5.1 — `num = enmiendas.length + 1`
 
-Los dos sitios que crean enmiendas usan esta fórmula: `04-contracts.js:2670` y
+Los dos sitios que crean enmiendas usan esta fórmula: `04-contracts.js:2677` y
 `06-licit-prov.js:487`. Si se borra una del medio, hay **colisión de números** — por eso todo
 borrado pasa por `renumberEnmiendas`.
 
@@ -225,7 +225,7 @@ también elimina los AVEs generados (`4ab1057`).
 
 ## 6. `btar` — el período tarifario base
 
-`cc.btar` se actualiza a `r.newPer` en cada actualización de tarifas (`04-contracts.js:2722`).
+`cc.btar` se actualiza a `r.newPer` en cada actualización de tarifas (`04-contracts.js:2729`).
 Es el ancla por defecto del período base en el panel polinómico. Si generás tarifarios sin
 actualizar `btar`, el panel propone una base vieja.
 

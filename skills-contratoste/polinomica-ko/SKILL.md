@@ -37,7 +37,7 @@ Los precios nuevos salen de `precio_viejo × Ko`.
 | `calculateUpdate` | `07-polynomial.js:117` | Cálculo de la actualización que se va a aplicar |
 | `computePoliDeltaPct` | `07-polynomial.js:631` | Delta % entre dos períodos (paneles en vivo) |
 | `computeConditionsResult` | `07-polynomial.js:274` | Evaluación de gatillos |
-| `calcPolyTramo` | `04-contracts.js:2399` | % por tramo dentro del form de enmienda |
+| `calcPolyTramo` | `04-contracts.js:2406` | % por tramo dentro del form de enmienda |
 
 > Eran **5**: `calcularKo` (la Calculadora Ko suelta) se fue con el recorte de `09-patch.js`
 > en `81fe665`. **No la repongas** sin pedirlo — sería una quinta copia de la misma fórmula.
@@ -148,7 +148,7 @@ que aplica un ajuste de tarifa. Se guarda en `pol_manual_pct_<cid>`.
 
 ### 4.7 — Tasa mensual encadenada
 
-`getCurrentMonthlyRate` (`04-contracts.js:2416`) parte de `montoBase / plazo` y compone
+`getCurrentMonthlyRate` (`04-contracts.js:2423`) parte de `montoBase / plazo` y compone
 `(1 + pct)` de cada tramo ya guardado **en orden cronológico**. El % de una actualización se
 aplica sobre la tarifa **realmente vigente** en ese momento, no sobre un promedio del contrato.
 Excluye los tramos `superseded` y el `excludeNum`.

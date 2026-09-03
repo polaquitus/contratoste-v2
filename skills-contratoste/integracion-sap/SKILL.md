@@ -41,7 +41,7 @@ usa como tal en varios lugares, aunque ahora puede no existir:
 | Sitio | Qué pasa con `num = null` |
 |---|---|
 | `getConsumed(c.num)` (`04:1732`) | `ME2N[null]` → `undefined` → devuelve `null`. **El burn rate desaparece en silencio** |
-| `ME2N[c.num]` (`04:798`, `04:1874`) | No matchea ninguna PO |
+| `ME2N[c.num]` (`04:798`, `04:1881`) | No matchea ninguna PO |
 | `window.DB.find(d => d.num === sc.num)` (`06:100`) | Dedupe del import ME3N |
 | Validación de unicidad (`03-utils.js:405`) | Solo corre si `f_num` tiene valor |
 | `esc(c.num)` en el listado (`04:31`) y el Dossier | Renderiza vacío |
@@ -190,7 +190,7 @@ Se cargan en el global `ME2N`, **indexado por N° de contrato**: `ME2N[c.num]`. 
 - `getConsumed(contractNum)` (`04:1732`) — suma lo consumido. Devuelve **`null`** cuando no hay
   datos, **no `0`** — la distinción importa: `0` es "no consumió", `null` es "no sé".
 - El burn rate y el % de avance de obra.
-- `computeObraAvanceCert` (`04:3136`) — % de avance desde POs certificadas, con período
+- `computeObraAvanceCert` (`04:3143`) — % de avance desde POs certificadas, con período
   editable. Devuelve `{pendientePct, avancePct, consumido, montoBase}`.
 
 Cuando un AVE se genera con scope OBRA se guarda `obraAvanceSnapshot` con el % usado **y** el
@@ -203,7 +203,7 @@ automático, para poder auditar de dónde salió el número.
 | Contexto | Con `num` nulo | ¿Correcto? |
 |---|---|---|
 | **Mostrar** "Avance obra 0%" en la UI | Se lee como un hecho medido | ❌ era falso → ahora dice `sin N° SAP` (`04:806-807`) |
-| **Calcular** `computeObraAvanceCert` (`04:3147`) | `avancePct=0`, `pendientePct=100` | ✅ **correcto**: sin POs certificadas, el ajuste corresponde sobre el total |
+| **Calcular** `computeObraAvanceCert` (`04:3154`) | `avancePct=0`, `pendientePct=100` | ✅ **correcto**: sin POs certificadas, el ajuste corresponde sobre el total |
 
 No "arregles" `computeObraAvanceCert` para que devuelva `null` con `num` nulo: cambiarías la
 base de un cálculo de AVE. El 100% pendiente es la respuesta conservadora y correcta.

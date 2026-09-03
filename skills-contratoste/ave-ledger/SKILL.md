@@ -32,7 +32,7 @@ monto_vigente = montoBase + Σ(AVEs tipo POLINOMICA) + Σ(AVEs tipo OWNER)
 | I3 | El `%` polinómico se aplica **una sola vez**, al calcular el `monto` del AVE. Después, ese AVE es un número fijo que se **suma**. | Volver a multiplicar el total por el % es el doble conteo clásico. |
 | I4 | Los AVEs no se editan: se **agregan** o se **borran enteros** (con su período y su enmienda). | Es un libro contable, tiene que ser auditable. |
 
-Implementación canónica de referencia (la única correcta hoy) — `04-contracts.js:2795-2797`:
+Implementación canónica de referencia (la única correcta hoy) — `04-contracts.js:2802-2797`:
 
 ```js
 // Monto vigente = montoBase + suma aditiva de todos los AVEs (sin multiplicar de nuevo por el %)
@@ -49,13 +49,13 @@ cc.monto = Math.round((cc.montoBase + avePolyNow + aveOwnerNow)*100)/100;
 
 | Campo | Qué es | Quién lo escribe |
 |---|---|---|
-| `montoBase` | Monto original **sin AVEs**. El ancla. | `03-utils.js:512,520` (`guardar`), `04-contracts.js:2735` (`guardarEnm`, congela la 1ª vez), `06-licit-prov.js:561` (`resetSection`) |
-| `monto` | Monto **vigente** (base + AVEs). | `04-contracts.js:2797` ✅, `07-polynomial.js:182` ⚠️ |
+| `montoBase` | Monto original **sin AVEs**. El ancla. | `03-utils.js:512,520` (`guardar`), `04-contracts.js:2742` (`guardarEnm`, congela la 1ª vez), `06-licit-prov.js:561` (`resetSection`) |
+| `monto` | Monto **vigente** (base + AVEs). | `04-contracts.js:2804` ✅, `07-polynomial.js:182` ⚠️ |
 | `_montoOriginal` | Fallback legacy de `montoBase`. Solo lectura. | `06-licit-prov.js:560` |
-| `tot` | ⚠️ **Campo huérfano.** Solo lo escribe `saveAveOwner` (`04:2930`) y solo lo lee `saveAveOwner` (`04:2897`). Ningún render lo usa. | ver §4.2 |
-| `montoMensualEst` | `nuevoTotal / plazo`. **Plazo en MESES**, siempre. | `04-contracts.js:2931` |
+| `tot` | ⚠️ **Campo huérfano.** Solo lo escribe `saveAveOwner` (`04:2937`) y solo lo lee `saveAveOwner` (`04:2904`). Ningún render lo usa. | ver §4.2 |
+| `montoMensualEst` | `nuevoTotal / plazo`. **Plazo en MESES**, siempre. | `04-contracts.js:2938` |
 | `_aveOwnerLimit` | Umbral de alerta de AVE Owner acumulado, en **USD**. Default `250000`. | UI del Detalle |
-| `aicValidations[]` / `ccValidations[]` | Lotes de validación: `{id, date, totalAr, totalUsd, aveIds[], tc}`. | `markValidationAic` (`04:2975`), `markValidationCc` (`04:2995`) |
+| `aicValidations[]` / `ccValidations[]` | Lotes de validación: `{id, date, totalAr, totalUsd, aveIds[], tc}`. | `markValidationAic` (`04:2982`), `markValidationCc` (`04:3002`) |
 
 ### Derivación de `montoBase` cuando falta
 
@@ -118,7 +118,7 @@ OWNER               → concepto ajeno a la fórmula (extensión, scope, cláusu
 ### 4.1 — AVE Owner "ajustable": el encadenado
 
 Un AVE Owner marcado `ajustable` recibe el mismo `%` polinómico que la base del contrato en cada
-actualización de tarifas. La lógica está en `04-contracts.js:2772-2791`:
+actualización de tarifas. La lógica está en `04-contracts.js:2779-2791`:
 
 - El factor se acumula **solo sobre períodos posteriores a `lastAdjYm`**.
 - La base del delta es `_ajustadoAcum` (no `monto`) → el ajuste va **encadenado**, no simple.
@@ -130,12 +130,12 @@ actualización de tarifas. La lógica está en `04-contracts.js:2772-2791`:
 
 ### 4.2 — ⚠️ `saveAveOwner` escribe `tot`, no `monto`
 
-`04-contracts.js:2930` hace `cc.tot = nuevoTotal` y **nunca toca `cc.monto`**. Consecuencia:
+`04-contracts.js:2937` hace `cc.tot = nuevoTotal` y **nunca toca `cc.monto`**. Consecuencia:
 
 - El **total mostrado sale bien** (`getTotal` en `03-utils.js:676` suma `montoBase + aves`).
 - Pero si `cc.montoBase` es `null`, la derivación `(monto - avePoly - aveOwner)` resta un AVE
   que jamás se sumó a `monto` → **`montoBase` queda subestimado** por el importe del AVE Owner.
-- Peor: el primer `guardarEnm` posterior **congela** ese `montoBase` incorrecto (`04:2735`).
+- Peor: el primer `guardarEnm` posterior **congela** ese `montoBase` incorrecto (`04:2742`).
 
 **Si tocás `saveAveOwner`:** agregale el recálculo canónico de §1, o como mínimo asegurá que
 `cc.montoBase` esté seteado antes de pushear el AVE.
@@ -144,8 +144,8 @@ actualización de tarifas. La lógica está en `04-contracts.js:2772-2791`:
 
 | Ruta | Archivo | Qué hace | Estado |
 |---|---|---|---|
-| `guardarEnm` | `04:2797` | recalcula desde `montoBase` | ✅ **canónica** |
-| `saveAveOwner` | `04:2930` | `cc.tot = totalActual + aveMonto` | ⚠️ campo equivocado (§4.2) |
+| `guardarEnm` | `04:2804` | recalcula desde `montoBase` | ✅ **canónica** |
+| `saveAveOwner` | `04:2937` | `cc.tot = totalActual + aveMonto` | ⚠️ campo equivocado (§4.2) |
 | `applyUpdate` | `07:182` | `contract.monto += state.aveAmount` | ⚠️ **acumulativo** — viola I2 |
 
 Eran 4 en la versión anterior de la app; `26e5419` eliminó la cuarta.
@@ -154,7 +154,7 @@ El AVE de `applyUpdate` (`07:181`) además **no guarda `montoUsd` ni `tcAlMoment
 del Detalle lo detecta y lo marca como estimado (`04:179`, flag `a.montoUsd == null`), pero el
 equivalente USD queda al TC de hoy — justo lo que `montoUsd` existe para evitar.
 
-> Al crear un AVE desde un sitio nuevo, copiá el objeto de `04:2756` como plantilla: es el
+> Al crear un AVE desde un sitio nuevo, copiá el objeto de `04:2763` como plantilla: es el
 > único con el set completo de campos.
 
 ### 4.4 — Signo en AVEs negativos
@@ -181,7 +181,7 @@ porque después no queda ningún AVE.
 
 ### 4.7 — Conversión USD
 
-`_ave_toUsd` (`04:2966`): si `c.mon` contiene `'USD'`, devuelve el monto tal cual. Si no, divide
+`_ave_toUsd` (`04:2973`): si `c.mon` contiene `'USD'`, devuelve el monto tal cual. Si no, divide
 por `getTCFromStore()` (índice `usd_div`) con **fallback 1000**. Ese `1000` es un valor de
 emergencia, no un TC — si aparece en pantalla, el Master de Índices no cargó.
 
@@ -221,7 +221,7 @@ usarlos**, para que "sin N°" se vea como tal y no como un dato faltante. Ver sk
 
 **Consistencia del objeto**
 4. ¿El AVE nuevo tiene `id`, `tipo`, `subtipo`, `monto`, `montoUsd`, `tcAlMomento`, `periodo`,
-   `enmRef`, `autoGenerated`, `fecha`? (plantilla: `04-contracts.js:2756`)
+   `enmRef`, `autoGenerated`, `fecha`? (plantilla: `04-contracts.js:2763`)
 5. Si tocaste la derivación de `montoBase`, ¿revisaste los **6 sitios**?
 
 **Persistencia**

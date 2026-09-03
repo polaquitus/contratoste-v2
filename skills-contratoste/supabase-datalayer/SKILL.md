@@ -58,6 +58,35 @@ Por eso los contratos guardan un `__sbId` **redundante dentro** del JSON. Se aut
 cargar, así que no rompe nada hoy — pero si escribís lógica que confíe en el `__sbId` **del
 JSON** en vez del de la fila, vas a leer un valor viejo.
 
+#### ⚠️ En las tablas single-row, `__sbId` queda como una clave más del diccionario
+
+`sbLoadSingle` devuelve el objeto entero **con `__sbId` adentro**, y `ME2N` e `IDX_STORE`
+**son** ese objeto:
+
+```js
+const me2nObj = await sbLoadSingle('me2n');
+if (me2nObj) ME2N = me2nObj;               // 02-supabase-auth.js:237-238
+```
+
+Entonces `Object.entries(ME2N)` no devuelve solo contratos: devuelve también
+`['__sbId', 7]`, con un **número** donde el código espera una tupla.
+
+> **Todo recorrido de `ME2N` o `IDX_STORE` tiene que filtrar la entrada que no es un dato.**
+> `renderMe2n` lo hacía (`04:1851`); `buildPlantFilter`, ocho líneas más arriba y en la misma
+> vista, no — y el filtro de Plants de Purchase Orders quedaba vacío en cada visita (**N4**,
+> `v189-fix-filtro-plants`). Lo encontró el CI en el primer run con login.
+
+```js
+// ✅ el patrón, idéntico en las dos funciones
+for (const [oa, d] of Object.entries(ME2N)) {
+  if (!oa || oa === 'SIN_CTTO') continue;
+  if (!d || !Array.isArray(d) || !Array.isArray(d[2])) continue;
+  ...
+}
+```
+
+Cuidado también con `Object.keys(ME2N).length` como "cantidad de contratos": cuenta uno de más.
+
 ---
 
 ## 2. Las cuatro reglas de persistencia
@@ -191,7 +220,7 @@ no alcanza si la vista sigue siendo alcanzable. Todo módulo nuevo necesita el c
 **punto de entrada**.
 
 > El rol también gobierna una regla de negocio nueva: **solo OWNER/ADMIN puede modificar un N°
-> de contrato ya asignado** (`04-contracts.js:1703`). Ver skill `integracion-sap`.
+> de contrato ya asignado** (`04-contracts.js:1709`). Ver skill `integracion-sap`.
 
 ---
 
@@ -207,6 +236,7 @@ no alcanza si la vista sigue siendo alcanzable. Todo módulo nuevo necesita el c
 | H‑02 `36601d8` | ~120 nombres de personal expuestos | Datos en el HTML estático |
 | H‑03 `7b95bbe` | App trabada tras F5 | Carrera IIFE vs. `DOMContentLoaded` |
 | `2026-07-08` | Menú filtrado pero módulo alcanzable | Chequeo solo en navegación |
+| N‑4 `v189` | Filtro de Plants vacío en Purchase Orders | `__sbId` recorrido como si fuera un contrato |
 
 ---
 
@@ -221,6 +251,7 @@ no alcanza si la vista sigue siendo alcanzable. Todo módulo nuevo necesita el c
 
 **Datos**
 6. ¿`__sbId` viene de la fila y no del JSON? (§1.2)
+6b. Si recorrés `ME2N` o `IDX_STORE`, ¿descartás la clave `__sbId`? (§1.2)
 7. ¿Ninguna lectura nueva trata `localStorage` como autoritativo?
 8. Si caés a caché, ¿avisás?
 9. ¿La colección puede pasar de 2000 filas? (§3.3)
