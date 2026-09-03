@@ -52,6 +52,25 @@ const urlSegura = (u) => String(u)
 
 const esTolerado = (u) => HTTP_TOLERADOS.find(t => t.patron.test(u)) || null;
 
+// El loader global (#sb-loader, 02-supabase-auth.js:78) tapa la pantalla mientras
+// initApp() trae contratos, ME2N, índices y contratistas de Supabase. Es un overlay
+// real: Playwright se niega a clickear a través de él y el click muere por timeout.
+// Hay que esperar a que se esconda (hideLoader lo pone en display:none, :89), no
+// subir el timeout del click. Si NO se esconde, eso sí es un problema de la app.
+const LOADER_MS = 45000;
+async function esperarLoader(page, dónde) {
+  try {
+    await page.waitForFunction(() => {
+      const el = document.getElementById('sb-loader');
+      return !el || getComputedStyle(el).display === 'none';
+    }, { timeout: LOADER_MS });
+    return null;
+  } catch (e) {
+    return 'el loader (#sb-loader) seguía visible después de ' +
+           (LOADER_MS / 1000) + 's en ' + dónde;
+  }
+}
+
 const fail = (msg) => { console.error('✗ ' + msg); process.exitCode = 1; };
 
 (async () => {
@@ -149,6 +168,14 @@ const fail = (msg) => { console.error('✗ ' + msg); process.exitCode = 1; };
     }
     console.log('✓ Login exitoso');
 
+    const errLoader = await esperarLoader(page, 'el login');
+    if (errLoader) {
+      fail(errLoader);
+      await page.screenshot({ path: 'screenshot-loader-colgado.png' });
+      await browser.close();
+      return;
+    }
+
     console.log('');
     console.log('=== Navegación por módulos ===');
     // Lo que falló durante la carga y el login queda fuera del loop: se reporta
@@ -169,6 +196,8 @@ const fail = (msg) => { console.error('✗ ' + msg); process.exitCode = 1; };
       page.on('pageerror', onErr);
       page.on('console', onCon);
       try {
+        const eL = await esperarLoader(page, m.nombre);
+        if (eL) throw new Error(eL);
         await page.click(`[data-mod='${m.mod}']`, { timeout: 8000 });
         await page.waitForTimeout(3000);
         await page.screenshot({ path: 'screenshot-' + m.mod + '.png' });
