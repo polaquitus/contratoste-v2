@@ -285,16 +285,25 @@ function renderMoTestigoSection(force){
   if(!activo)return;
   if(!force&&document.getElementById('mot_modo'))return; // ya construida — no perder lo tipeado
   const conceptos=_moConceptosMaestro();
-  function tablaHtml(prefix,conCategoria){
+  function tablaGrupoHtml(prefix,items){
     let h='<table style="width:100%;font-size:11.5px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--g500)"><th>Concepto</th><th style="width:90px">Cantidad</th><th style="width:120px">Precio Unitario</th></tr></thead><tbody>';
-    conceptos.forEach(co=>{
-      h+='<tr style="border-top:1px solid var(--g100)"><td style="padding:3px 4px">'+co.nombre+(co.tipoLiq==='norem'?' <span style="color:var(--g500);font-size:9.5px">(No Rem.)</span>':'')+
+    items.forEach(co=>{
+      h+='<tr style="border-top:1px solid var(--g100)"><td style="padding:3px 4px">'+co.nombre+
         '<input type="hidden" id="'+prefix+'_id_'+co.id+'" value="'+co.id+'"></td>'+
         '<td><input type="number" step="0.01" id="'+prefix+'_cant_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td>'+
         '<td><input type="number" step="0.01" id="'+prefix+'_precio_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td></tr>';
     });
+    if(!items.length)h+='<tr><td colspan="3" style="padding:6px;font-size:11px;color:var(--g500);font-style:italic">Sin conceptos.</td></tr>';
     h+='</tbody></table>';
     return h;
+  }
+  function tablaHtml(prefix,conCategoria){
+    const rem=conceptos.filter(co=>co.tipoLiq!=='norem');
+    const norem=conceptos.filter(co=>co.tipoLiq==='norem');
+    return '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--g600);margin:8px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--g600)">💰 Sumas Remunerativas</div>'+
+      tablaGrupoHtml(prefix,rem)+
+      '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--p500);margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--p500)">🧾 Sumas No Remunerativas</div>'+
+      tablaGrupoHtml(prefix,norem);
   }
   wrap.innerHTML=
     '<div class="fsec" style="margin-top:14px;border:1px solid var(--g200);border-radius:8px;padding:14px">'+

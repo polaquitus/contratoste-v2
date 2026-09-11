@@ -767,7 +767,7 @@ async function deleteLastAutoAve() {
     LEGALES:{list:true,form:false,detail:true,me2n:false,idx:false,users:false,legales:true,rrll:false},
     SIN_ROL:{list:true,form:false,detail:true,me2n:false,idx:false,users:false,legales:false,rrll:false}
   };
-  var ROLE_LABELS={list:'Contratos',form:'Nuevo Contrato',detail:'Detalle',me2n:'Purchase Orders',idx:'Indices',users:'Usuarios',legales:'Legales',rrll:'RRLL'};
+  var ROLE_LABELS={list:'Contratos',form:'Nuevo Contrato',detail:'Detalle',me2n:'Purchase Orders',idx:'Indices',users:'Usuarios',legales:'Legales',rrll:'Relaciones Laborales'};
   var ROLE_STORAGE_KEY='role_permissions_v19';
   var ROLE_TABLE='role_perms';   // tabla Supabase single-row (patrón id/datos)
   var _roleMatrixSbId=null;      // id de la fila en Supabase para PATCH

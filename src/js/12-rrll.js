@@ -108,7 +108,7 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
     var nav=document.querySelector('.sb-nav');if(!nav)return;
     if(q('navRrllModule')){refs.nav=q('navRrllModule');return;}
     var a=make('a','nv');a.id='navRrllModule';a.href='#';a.setAttribute('data-mod','rrll');
-    a.appendChild(make('span','ni','👷'));a.appendChild(make('span','','RRLL'));
+    a.appendChild(make('span','ni','👷'));a.appendChild(make('span','','Relaciones Laborales'));
     a.addEventListener('click',function(ev){ev.preventDefault();showPage();});
     var legalesLink=q('navLegalesModule');
     if(legalesLink&&legalesLink.parentNode===nav){legalesLink.insertAdjacentElement('afterend',a);}
@@ -121,7 +121,7 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
     if(q('vRrllModule')){refs.root=q('vRrllModule');refs.conceptos=q('rrllConceptos');refs.cambios=q('rrllCambios');return;}
     var wrap=make('div','vw');wrap.id='vRrllModule';
     var card=make('div','card');
-    var hdr=make('div','thdr');hdr.appendChild(make('h2','','👷 RRLL — Convenios Petroleros (PP/PJ)'));
+    var hdr=make('div','thdr');hdr.appendChild(make('h2','','👷 Relaciones Laborales — Convenios Petroleros (PP/PJ)'));
     var info=make('div','info-box blue');info.style.margin='0 0 14px';
     info.innerHTML='Acá se registra cada cambio de paritaria (qué concepto de la planilla testigo sube, cuánto y desde qué período) y se mantiene el catálogo de conceptos. Los contratos en modo "sueldo testigo" toman este historial recién cuando alguien corre una Actualización de Tarifas en ESE contrato — cargar acá no dispara nada solo.';
     card.appendChild(hdr);card.appendChild(info);
@@ -136,7 +136,7 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
 
   function setHeader(){
     var t=q('pgT'),a=q('pgA');if(!t||!a)return;
-    clear(t);t.appendChild(document.createTextNode('👷 RRLL '));var bc=make('span','bc','Convenios PP/PJ');t.appendChild(bc);
+    clear(t);t.appendChild(document.createTextNode('👷 Relaciones Laborales '));var bc=make('span','bc','Convenios PP/PJ');t.appendChild(bc);
     clear(a);var rec=make('button','btn btn-s btn-sm','Recargar');rec.type='button';rec.addEventListener('click',async function(){await reload();render();});a.appendChild(rec);
   }
 
@@ -156,25 +156,41 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
   function render(){ renderConceptos(); renderCambios(); }
 
   // ── Catálogo de conceptos ──────────────────────────────────────────────
+  function renderConceptoRow(c){
+    var row=make('div','');row.style.display='flex';row.style.justifyContent='space-between';row.style.alignItems='center';
+    row.style.padding='7px 9px';row.style.borderRadius='6px';row.style.background='var(--g50)';row.style.fontSize='12px';
+    var left=make('div','');
+    var nom=make('div','');nom.style.fontWeight='600';nom.textContent=c.nombre;
+    var sub=make('div','');sub.style.fontSize='10.5px';sub.style.color='var(--g500)';sub.textContent=(modoDef(c.modo)||{}).label||c.modo;
+    left.appendChild(nom);left.appendChild(sub);
+    var edit=make('button','btn btn-s btn-sm','✏️');edit.type='button';edit.style.padding='2px 7px';edit.addEventListener('click',function(){openConceptoForm(c.id);});
+    row.appendChild(left);row.appendChild(edit);
+    return row;
+  }
+  function renderConceptoGrupo(titulo,items,colorBorde){
+    var grupo=make('div','');grupo.style.marginBottom='14px';
+    var h=make('div','');h.style.fontWeight='700';h.style.fontSize='11px';h.style.textTransform='uppercase';h.style.letterSpacing='.4px';
+    h.style.color=colorBorde;h.style.marginBottom='6px';h.style.paddingBottom='4px';h.style.borderBottom='2px solid '+colorBorde;
+    h.textContent=titulo+' ('+items.length+')';
+    grupo.appendChild(h);
+    var list=make('div','');list.style.display='flex';list.style.flexDirection='column';list.style.gap='4px';
+    items.forEach(function(c){ list.appendChild(renderConceptoRow(c)); });
+    if(!items.length){var vacio=make('div','','Sin conceptos.');vacio.style.fontSize='11px';vacio.style.color='var(--g500)';vacio.style.fontStyle='italic';list.appendChild(vacio);}
+    grupo.appendChild(list);
+    return grupo;
+  }
   function renderConceptos(){
     if(!refs.conceptos)return;
     clear(refs.conceptos);
     var box=make('div','');box.style.border='1px solid var(--g200)';box.style.borderRadius='8px';box.style.padding='12px';
     var title=make('div','');title.style.fontWeight='800';title.style.fontSize='13px';title.style.marginBottom='10px';title.textContent='Catálogo de Conceptos ('+RRLL_STORE.conceptos.length+')';
     box.appendChild(title);
-    var list=make('div','');list.style.display='flex';list.style.flexDirection='column';list.style.gap='4px';list.style.maxHeight='520px';list.style.overflow='auto';
-    RRLL_STORE.conceptos.forEach(function(c){
-      var row=make('div','');row.style.display='flex';row.style.justifyContent='space-between';row.style.alignItems='center';
-      row.style.padding='7px 9px';row.style.borderRadius='6px';row.style.background='var(--g50)';row.style.fontSize='12px';
-      var left=make('div','');
-      var nom=make('div','');nom.style.fontWeight='600';nom.textContent=c.nombre+(c.tipoLiq==='norem'?' (No Rem.)':'');
-      var sub=make('div','');sub.style.fontSize='10.5px';sub.style.color='var(--g500)';sub.textContent=(modoDef(c.modo)||{}).label||c.modo;
-      left.appendChild(nom);left.appendChild(sub);
-      var edit=make('button','btn btn-s btn-sm','✏️');edit.type='button';edit.style.padding='2px 7px';edit.addEventListener('click',function(){openConceptoForm(c.id);});
-      row.appendChild(left);row.appendChild(edit);
-      list.appendChild(row);
-    });
-    box.appendChild(list);
+    var listWrap=make('div','');listWrap.style.maxHeight='520px';listWrap.style.overflow='auto';
+    var rem=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq!=='norem';});
+    var norem=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='norem';});
+    listWrap.appendChild(renderConceptoGrupo('💰 Sumas Remunerativas',rem,'var(--g600)'));
+    listWrap.appendChild(renderConceptoGrupo('🧾 Sumas No Remunerativas',norem,'var(--p500)'));
+    box.appendChild(listWrap);
     var addBtn=make('button','btn btn-p btn-sm','+ Agregar concepto');addBtn.type='button';addBtn.style.marginTop='10px';
     addBtn.addEventListener('click',function(){openConceptoForm(null);});
     box.appendChild(addBtn);
@@ -315,8 +331,10 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
     clear(host);
     if(!state._wantNewCambio)return;
     var wrap=make('div','');wrap.style.border='1px dashed var(--p400)';wrap.style.borderRadius='8px';wrap.style.padding='10px';wrap.style.background='var(--p50)';
+    function conceptoOpt(c){return '<option value="'+esc(c.id)+'">'+esc(c.nombre)+' ('+esc((modoDef(c.modo)||{}).label||c.modo)+')</option>';}
     var conceptoOpts='<option value="ACUERDO_GENERAL">Acuerdo General (mueve todos los conceptos en modo "Escala con acuerdo")</option>'+
-      RRLL_STORE.conceptos.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.nombre)+' ('+esc((modoDef(c.modo)||{}).label||c.modo)+')</option>';}).join('');
+      '<optgroup label="💰 Sumas Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq!=='norem';}).map(conceptoOpt).join('')+'</optgroup>'+
+      '<optgroup label="🧾 Sumas No Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='norem';}).map(conceptoOpt).join('')+'</optgroup>';
     wrap.innerHTML=
       '<div style="font-weight:700;font-size:12px;margin-bottom:8px">Nuevo cambio de paritaria</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
