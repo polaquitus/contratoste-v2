@@ -1308,6 +1308,119 @@ function getTCFromStore() {
   return null;
 }
 
+// ═══════════ AJUSTE DE MANO DE OBRA POR SUELDO TESTIGO (PP/PJ) ═════════════
+// Alternativa al "% promedio" plano de IDX_STORE.mo_pp/mo_pj: reconstruye el
+// impacto real de un aumento de convenio sobre la planilla de liquidación de
+// sueldo testigo que se carga una vez por contrato (contract.moTestigo).
+// RRLL_STORE (definido en 12-rrll.js) guarda el catálogo de conceptos y el
+// historial de cambios de paritaria — esta función solo LEE esos datos, no
+// los modifica. Ver /root/.claude/plans/linked-twirling-pillow.md.
+//
+// Los 5 modos de cálculo por concepto (verificados contra un Excel real de
+// liquidación de PP, EJEMPLO_AJUSTE_DE_PP.xlsx, con 8 checkpoints exactos):
+//   - escala_con_acuerdo: PrecioUnitario_base × (1 + %acumulado del acuerdo
+//     general desde la base del contrato). Caso por defecto.
+//   - pct_de_concepto: % de OTRO concepto de la misma tabla (ej. Turno = %
+//     de Básico). El % es propio, no sigue al acuerdo general.
+//   - pct_subtotal_parcial: % de la suma de un grupo de conceptos anteriores
+//     (ej. Zona = % de Básico+Turno). Con baseFijo:true, la suma se toma de
+//     la tabla ORIGINAL del contrato (sin escalar), no de la vigente — así
+//     se comporta "ANR" en el Excel real (referencia absoluta a la columna
+//     base, no a la del período).
+//   - pct_subtotal_acumulado: % de todo lo cargado arriba de esa fila (ej.
+//     Presentismo). Siempre calculado, nunca se toca a mano.
+//   - suma_fija: monto $ literal que queda constante hasta que RRLL carga
+//     un valor nuevo para ese concepto puntual (incluye conceptos que no
+//     existían antes de cierto período, ej. una asignación nueva).
+
+// Catálogo de conceptos vigente: el maestro de RRLL_STORE más cualquier fila
+// que un contrato puntual haya agregado a mano (ver moTestigo.tablaPP/PJ) y
+// que no esté en el maestro — se trata como suma_fija de última hora.
+function getMoConceptoDef(conceptoId, tablaContrato){
+  var maestro = (typeof RRLL_STORE!=='undefined'&&RRLL_STORE&&Array.isArray(RRLL_STORE.conceptos))?RRLL_STORE.conceptos:[];
+  var def = maestro.find(function(c){return c.id===conceptoId;});
+  if(def) return def;
+  var enContrato = (tablaContrato||[]).find(function(r){return r.conceptoId===conceptoId;});
+  return {id:conceptoId, nombre:(enContrato&&enContrato.nombre)||conceptoId, tipoLiq:'norem', modo:'suma_fija'};
+}
+
+// Reconstruye la planilla testigo de un contrato (PP o PJ) a un período dado,
+// aplicando en orden cronológico los cambios de RRLL_STORE hasta `hastaYm`.
+// _esBasal (uso interno) evita recursión infinita al calcular la tabla
+// original (sin cambios) que necesitan los conceptos con baseFijo:true.
+function resolverTablaTestigo(tablaContrato, cambiosCct, hastaYm, _esBasal){
+  var filas = tablaContrato||[];
+  var conceptos = filas.map(function(r){return getMoConceptoDef(r.conceptoId, filas);})
+    // orden estable por si el maestro no viene ordenado — respeta el orden en que
+    // aparecen en la tabla del contrato, que a su vez sigue al catálogo maestro
+    .filter(function(c,i,arr){return arr.findIndex(function(x){return x.id===c.id;})===i;});
+  var basal = _esBasal ? null : resolverTablaTestigo(tablaContrato, [], '0000-01', true);
+
+  var aplicables = (cambiosCct||[]).filter(function(c){return String(c.periodo||'')<=hastaYm;});
+  var acuerdoGeneral = 0;
+  aplicables.filter(function(c){return c.conceptoId==='ACUERDO_GENERAL';})
+    .sort(function(a,b){return String(a.periodo).localeCompare(String(b.periodo));})
+    .forEach(function(c){ acuerdoGeneral = Number(c.valor)||0; });
+  var overrides = {};
+  aplicables.filter(function(c){return c.conceptoId!=='ACUERDO_GENERAL';})
+    .sort(function(a,b){return String(a.periodo).localeCompare(String(b.periodo));})
+    .forEach(function(c){ overrides[c.conceptoId]=c; });
+
+  var baseById = {}; filas.forEach(function(r){ baseById[r.conceptoId]={cant:Number(r.cant)||0,precio:Number(r.precio)||0}; });
+
+  var precio={}, cant={};
+  conceptos.forEach(function(co){
+    var base = baseById[co.id]||{cant:0,precio:0};
+    var ov = overrides[co.id];
+    cant[co.id] = (ov&&ov.cant!=null) ? Number(ov.cant) : base.cant;
+    if(co.modo==='escala_con_acuerdo'){
+      precio[co.id] = base.precio*(1+acuerdoGeneral);
+    } else {
+      // pct_de_concepto / pct_subtotal_parcial / pct_subtotal_acumulado / suma_fija:
+      // todos usan directo el último valor que RRLL haya cargado para ESE concepto
+      // puntual, o si nunca cambió, el valor original de la tabla del contrato.
+      precio[co.id] = ov ? Number(ov.valor) : base.precio;
+    }
+  });
+
+  var monto={};
+  conceptos.forEach(function(co){
+    if(co.modo==='pct_de_concepto'){
+      monto[co.id] = (monto[co.deConceptoId]||0)*precio[co.id];
+    } else if(co.modo==='pct_subtotal_parcial'){
+      var fuente = (co.baseFijo && basal) ? basal.monto : monto;
+      var s=0; (co.deConceptos||[]).forEach(function(id){ s+=fuente[id]||0; });
+      monto[co.id] = s*precio[co.id];
+    } else if(co.modo==='pct_subtotal_acumulado'){
+      var s2=0; (co.deConceptos||[]).forEach(function(id){ s2+=monto[id]||0; });
+      monto[co.id] = s2*precio[co.id];
+    } else {
+      monto[co.id] = cant[co.id]*precio[co.id];
+    }
+  });
+
+  var rem=0, norem=0;
+  conceptos.forEach(function(co){ if(co.tipoLiq==='rem') rem+=monto[co.id]; else norem+=monto[co.id]; });
+  return {monto:monto, rem:rem, norem:norem, total:rem+norem};
+}
+
+// % de variación del SUELDO BRUTO TOTAL de un contrato (cct: 'PP'|'PJ') entre
+// dos períodos, replay-ando el historial de RRLL_STORE.cambios. Misma firma
+// de retorno que computeAutoPctForIdx (04-contracts.js): número o null si no
+// hay tabla testigo cargada para ese cct.
+function computeTestigoPct(contract, cct, fromYm, toYm){
+  if(!contract||!contract.moTestigo||!contract.moTestigo.enabled) return null;
+  var tabla = cct==='PJ' ? contract.moTestigo.tablaPJ : contract.moTestigo.tablaPP;
+  if(!tabla||!tabla.length) return null;
+  if(!fromYm||!toYm) return null;
+  var cambios = (typeof RRLL_STORE!=='undefined'&&RRLL_STORE&&Array.isArray(RRLL_STORE.cambios))?RRLL_STORE.cambios:[];
+  var cambiosCct = cambios.filter(function(c){return c.cct===cct;});
+  var desde = resolverTablaTestigo(tabla, cambiosCct, fromYm);
+  var hasta = resolverTablaTestigo(tabla, cambiosCct, toYm);
+  if(!desde.total) return null;
+  return ((hasta.total/desde.total)-1)*100;
+}
+
 let chartDominio = null;
 let chartProveedores = null;
 

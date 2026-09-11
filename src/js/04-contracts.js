@@ -1584,7 +1584,7 @@ function editCont(id){const c=window.DB.find(x=>x.id===id);if(!c)return;document
   document.getElementById('f_ini').value=c.fechaIni;
   document.getElementById('f_fin').value=c.fechaFin;document.getElementById('f_resp').value=c.resp||'';
   document.getElementById('f_btar').value=c.btar||'';document.getElementById('f_det').value=c.det||'';
-  calcPlazo();setPoly(c.poly);
+  calcPlazo();setPoly(c.poly);if(typeof setMoTestigo==='function')setMoTestigo(c.moTestigo);
   document.getElementById('f_tcontr').value=c.tcontr||'';onContrCh();
   document.getElementById('f_ariba').value=c.ariba||'';
   // rfqOferentes es la fuente de verdad; si el contrato es de antes de este campo, se
@@ -2299,6 +2299,30 @@ function computeAutoPctForIdx(idxLabel,fromYm,toYm){
     return null;
   }catch(e){console.warn('computeAutoPctForIdx',e);return null;}
 }
+// Único punto de integración del ajuste por sueldo testigo (ver
+// /root/.claude/plans/linked-twirling-pillow.md) con el motor de cálculo
+// polinómico existente: si el término es 'MANO DE OBRA (PP/PJ)' y el contrato
+// tiene moTestigo activado, el % sale de computeTestigoPct (07-polynomial.js)
+// para PP y PJ por separado, ponderado por la cantidad de personal de cada
+// uno EN ESE contrato. Para cualquier otro caso (incluidos contratos con
+// 'PP' en modo "% promedio" de siempre) delega, sin cambios, en
+// computeAutoPctForIdx — el resto del motor (computeTramoChain,
+// getCurrentMonthlyRate, guardarEnm, AVEs) no se toca.
+function resolveTermPct(cc,idxLabel,fromYm,toYm){
+  if(idxLabel==='MANO DE OBRA (PP/PJ)'&&cc&&cc.moTestigo&&cc.moTestigo.enabled&&typeof computeTestigoPct==='function'){
+    const cantPP=Number(cc.moTestigo.cantPP)||0, cantPJ=Number(cc.moTestigo.cantPJ)||0;
+    const totalCant=cantPP+cantPJ;
+    if(!totalCant)return null;
+    const pctPP=computeTestigoPct(cc,'PP',fromYm,toYm);
+    const pctPJ=computeTestigoPct(cc,'PJ',fromYm,toYm);
+    if(pctPP==null&&pctPJ==null)return null;
+    const blended=((pctPP||0)*cantPP+(pctPJ||0)*cantPJ)/totalCant;
+    resolveTermPct._lastBreakdown={pctPP:pctPP,pctPJ:pctPJ,pesoPP:cantPP/totalCant*100,pesoPJ:cantPJ/totalCant*100};
+    return blended;
+  }
+  resolveTermPct._lastBreakdown=null;
+  return computeAutoPctForIdx(idxLabel,fromYm,toYm);
+}
 function toggleTermManual(tramoId,i){
   const key=tramoId+'_'+i;
   window._neTermManual[key]=!window._neTermManual[key];
@@ -2334,9 +2358,10 @@ function recalcTermAuto(tramoId,i){
   const fromBase=getAutoFromBaseTerm(cc,tramoId,i,t.idx,_neCorrExcludeNum());
   if(fromEl)fromEl.textContent='Base ant.: '+(fromBase?(typeof formatYmLabel==='function'?formatYmLabel(fromBase):fromBase):'—');
   const pb=nbEl?.value||'';
-  let autoOk=false,pa=null;
+  let autoOk=false,pa=null,moBreakdown=null;
   if(!manualOverride&&pb){
-    const v=computeAutoPctForIdx(t.idx,fromBase,pb);
+    const v=resolveTermPct(cc,t.idx,fromBase,pb);
+    moBreakdown=resolveTermPct._lastBreakdown||null;
     if(v!=null){pa=v;autoOk=true;}
   }
   const locked=!manualOverride&&autoOk;
@@ -2361,7 +2386,11 @@ function recalcTermAuto(tramoId,i){
     else{statusEl.textContent='✏️ Manual (sin datos)';statusEl.style.color='#b45309';}
   }
   if(hintEl){
-    if(!manualOverride&&pb&&!autoOk){hintEl.style.display='block';hintEl.textContent='⚠ Sin datos automáticos para este período — completá manualmente.';}
+    if(!manualOverride&&pb&&!autoOk){hintEl.style.display='block';hintEl.style.color='';hintEl.textContent='⚠ Sin datos automáticos para este período — completá manualmente.';}
+    else if(locked&&moBreakdown){
+      hintEl.style.display='block';hintEl.style.color='var(--g500)';
+      hintEl.textContent='👷 Sueldo testigo — PP: '+(moBreakdown.pctPP!=null?moBreakdown.pctPP.toFixed(2)+'%':'s/d')+' (peso '+moBreakdown.pesoPP.toFixed(0)+'%) · PJ: '+(moBreakdown.pctPJ!=null?moBreakdown.pctPJ.toFixed(2)+'%':'s/d')+' (peso '+moBreakdown.pesoPJ.toFixed(0)+'%)';
+    }
     else hintEl.style.display='none';
   }
   const justWrapEl=document.getElementById('ne_justwrap_'+tramoId+'_'+i);

@@ -253,9 +253,115 @@ function buildPoly(){
   h+=`<div class="poly-row"><div class="pn">${i}</div><div class="fgrp"><label>Índice ${i}</label><select id="p_i${i}" onchange="calcP()">${o}</select></div><div class="fgrp"><label>Incidencia (%)</label><input type="number" id="p_n${i}" placeholder="0.00" step="0.01" min="0" max="100" oninput="calcP()"></div><div class="fgrp"><label>Base</label><input type="month" id="p_b${i}"></div></div>`;}
   document.getElementById('polyBox').innerHTML=h;
 }
-function calcP(){let s=0;for(let i=1;i<=5;i++)s+=parseFloat(document.getElementById('p_n'+i).value)||0;const e=document.getElementById('psVal');e.textContent=s.toFixed(2);const ok=Math.abs(s-100)<.5;e.className='ps-v mono '+(ok?'ok':'bad');document.getElementById('psNote').textContent=ok?'✓ OK':'(debe sumar 100%)';return ok;}
+function calcP(){let s=0;for(let i=1;i<=5;i++)s+=parseFloat(document.getElementById('p_n'+i).value)||0;const e=document.getElementById('psVal');e.textContent=s.toFixed(2);const ok=Math.abs(s-100)<.5;e.className='ps-v mono '+(ok?'ok':'bad');document.getElementById('psNote').textContent=ok?'✓ OK':'(debe sumar 100%)';if(typeof renderMoTestigoSection==='function')renderMoTestigoSection();return ok;}
 function getPoly(){let a=[];for(let i=1;i<=5;i++){const raw=parseFloat(document.getElementById('p_n'+i).value)||0;a.push({idx:document.getElementById('p_i'+i).value,inc:raw/100,base:document.getElementById('p_b'+i).value||''});}return a;}
 function setPoly(a){if(!a)return;a.forEach((p,i)=>{if(i<5){document.getElementById('p_i'+(i+1)).value=p.idx||'';document.getElementById('p_n'+(i+1)).value=p.inc?(p.inc*100):'';document.getElementById('p_b'+(i+1)).value=p.base||'';}});calcP();}
+
+// ══════ Ajuste de Mano de Obra por Sueldo Testigo (PP/PJ) ══════════════════
+// Sección condicional que aparece en el formulario de contrato cuando alguna
+// de las 5 filas de índice polinómico tiene elegido 'MANO DE OBRA (PP/PJ)'.
+// Guarda en contract.moTestigo — lo consume computeTestigoPct/resolveTermPct
+// (07-polynomial.js / 04-contracts.js). Ver plan en
+// /root/.claude/plans/linked-twirling-pillow.md.
+const MO_TESTIGO_CATEGORIAS=['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+function _moTestigoActivoEnForm(){
+  for(let i=1;i<=5;i++){const el=document.getElementById('p_i'+i);if(el&&el.value==='MANO DE OBRA (PP/PJ)')return true;}
+  return false;
+}
+function _moConceptosMaestro(){
+  return (typeof RRLL_STORE!=='undefined'&&RRLL_STORE&&Array.isArray(RRLL_STORE.conceptos))?RRLL_STORE.conceptos:[];
+}
+function renderMoTestigoSection(force){
+  const wrap=document.getElementById('moTestigoWrap');if(!wrap)return;
+  const activo=_moTestigoActivoEnForm();
+  wrap.style.display=activo?'':'none';
+  if(!activo)return;
+  if(!force&&document.getElementById('mot_modo'))return; // ya construida — no perder lo tipeado
+  const conceptos=_moConceptosMaestro();
+  function tablaHtml(prefix,conCategoria){
+    let h='<table style="width:100%;font-size:11.5px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--g500)"><th>Concepto</th><th style="width:90px">Cantidad</th><th style="width:120px">Precio Unitario</th></tr></thead><tbody>';
+    conceptos.forEach(co=>{
+      h+='<tr style="border-top:1px solid var(--g100)"><td style="padding:3px 4px">'+co.nombre+(co.tipoLiq==='norem'?' <span style="color:var(--g500);font-size:9.5px">(No Rem.)</span>':'')+
+        '<input type="hidden" id="'+prefix+'_id_'+co.id+'" value="'+co.id+'"></td>'+
+        '<td><input type="number" step="0.01" id="'+prefix+'_cant_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td>'+
+        '<td><input type="number" step="0.01" id="'+prefix+'_precio_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td></tr>';
+    });
+    h+='</tbody></table>';
+    return h;
+  }
+  wrap.innerHTML=
+    '<div class="fsec" style="margin-top:14px;border:1px solid var(--g200);border-radius:8px;padding:14px">'+
+      '<h3 style="font-size:13px;margin-bottom:10px">👷 Ajuste de Mano de Obra — PP/PJ</h3>'+
+      '<div class="fgrp" style="margin-bottom:14px"><label>Modo de ajuste</label>'+
+        '<select id="mot_modo" onchange="onMoTestigoModoChange()" style="max-width:260px">'+
+          '<option value="promedio">% promedio (índice general)</option>'+
+          '<option value="testigo">Sueldo testigo</option>'+
+        '</select>'+
+      '</div>'+
+      '<div id="mot_testigoBody" style="display:none">'+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">'+
+          '<div class="fgrp"><label>Cantidad de personal — Petroleros Privados</label><input type="number" id="mot_cantPP" min="0" step="1" value="0"></div>'+
+          '<div class="fgrp"><label>Cantidad de personal — Petroleros Jerárquicos</label><input type="number" id="mot_cantPJ" min="0" step="1" value="0"></div>'+
+          '<div class="fgrp"><label>Categoría de referencia (PP)</label><select id="mot_categoriaPP">'+MO_TESTIGO_CATEGORIAS.map(c=>'<option value="'+c+'">'+c+'</option>').join('')+'</select></div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+          '<div><div style="font-weight:700;font-size:12px;margin-bottom:6px">Planilla testigo — Petroleros Privados</div>'+tablaHtml('mot_pp',true)+'</div>'+
+          '<div><div style="font-weight:700;font-size:12px;margin-bottom:6px">Planilla testigo — Petroleros Jerárquicos</div>'+tablaHtml('mot_pj',false)+'</div>'+
+        '</div>'+
+        '<div class="info-box blue" style="margin-top:10px;font-size:11px">Esta planilla queda fija a lo largo del contrato — RRLL registra los cambios de paritaria en su propia sección, y cada actualización de tarifas del contrato toma el % real de ahí, ponderado por la cantidad de personal cargada arriba.</div>'+
+      '</div>'+
+    '</div>';
+}
+function onMoTestigoModoChange(){
+  const modo=document.getElementById('mot_modo')?.value||'promedio';
+  const body=document.getElementById('mot_testigoBody');
+  if(body)body.style.display=modo==='testigo'?'':'none';
+}
+function getMoTestigo(){
+  if(!_moTestigoActivoEnForm())return null;
+  const modo=document.getElementById('mot_modo')?.value||'promedio';
+  if(modo!=='testigo')return {enabled:false};
+  const conceptos=_moConceptosMaestro();
+  function leerTabla(prefix){
+    return conceptos.map(co=>{
+      const cantEl=document.getElementById(prefix+'_cant_'+co.id);
+      const precioEl=document.getElementById(prefix+'_precio_'+co.id);
+      return {conceptoId:co.id,cant:parseFloat(cantEl?.value)||0,precio:parseFloat(precioEl?.value)||0};
+    });
+  }
+  return {
+    enabled:true,
+    baseYm:(typeof gv==='function'?gv('f_ini'):'')?.substring(0,7)||'',
+    cantPP:parseInt(document.getElementById('mot_cantPP')?.value)||0,
+    cantPJ:parseInt(document.getElementById('mot_cantPJ')?.value)||0,
+    categoriaPP:document.getElementById('mot_categoriaPP')?.value||'',
+    tablaPP:leerTabla('mot_pp'),
+    tablaPJ:leerTabla('mot_pj')
+  };
+}
+function setMoTestigo(m){
+  // Siempre reconstruye desde cero: evita que la tabla de un contrato anterior
+  // quede pegada al pasar a editar otro (editCont() no pasa por resetForm()).
+  const wrap0=document.getElementById('moTestigoWrap');if(wrap0)wrap0.innerHTML='';
+  renderMoTestigoSection(true);
+  if(!m||!document.getElementById('mot_modo'))return;
+  document.getElementById('mot_modo').value=m.enabled?'testigo':'promedio';
+  onMoTestigoModoChange();
+  if(!m.enabled)return;
+  if(document.getElementById('mot_cantPP'))document.getElementById('mot_cantPP').value=m.cantPP||0;
+  if(document.getElementById('mot_cantPJ'))document.getElementById('mot_cantPJ').value=m.cantPJ||0;
+  if(document.getElementById('mot_categoriaPP'))document.getElementById('mot_categoriaPP').value=m.categoriaPP||'A';
+  function volcarTabla(prefix,filas){
+    (filas||[]).forEach(r=>{
+      const cantEl=document.getElementById(prefix+'_cant_'+r.conceptoId);
+      const precioEl=document.getElementById(prefix+'_precio_'+r.conceptoId);
+      if(cantEl)cantEl.value=r.cant||0;
+      if(precioEl)precioEl.value=r.precio||0;
+    });
+  }
+  volcarTabla('mot_pp',m.tablaPP);
+  volcarTabla('mot_pj',m.tablaPJ);
+}
 
 function onContrCh(){const v=gv('f_tcontr');document.getElementById('secRfq').classList.toggle('vis',v==='RFQ MAIL'||v==='RFQ ARIBA');document.getElementById('secAr').classList.toggle('vis',v==='RFQ ARIBA');}
 function onFueComiteToggle(){
@@ -427,6 +533,7 @@ async function guardar(){
     resp:gv('f_resp'),btar:gv('f_btar'),det:gv('f_det'),
     plazo:parseInt(document.getElementById('f_plazo').value)||0,
     poly:getPoly(),
+    moTestigo:(typeof getMoTestigo==='function'?getMoTestigo():null)||(old&&old.moTestigo)||null,
     tcontr:gv('f_tcontr'),
     // cc (CC Date) ya no tiene campo propio en el formulario — reemplazado por Fecha de
     // Comité (comiteFecha). Se preserva el valor viejo (spread de "old" más arriba) para
@@ -622,7 +729,9 @@ function resetForm(){
   document.getElementById('f_trigA').checked=false;document.getElementById('l_trigA').textContent='No';
   document.getElementById('f_trigB').checked=false;document.getElementById('l_trigB').textContent='No';document.getElementById('trigB_pct').style.display='none';
   document.getElementById('f_trigC').checked=false;document.getElementById('l_trigC').textContent='No';document.getElementById('trigC_mes').style.display='none';
-  buildPoly();files=[];renderFL();
+  buildPoly();
+  const motWrap=document.getElementById('moTestigoWrap');if(motWrap){motWrap.innerHTML='';motWrap.style.display='none';}
+  files=[];renderFL();
   populateProvSelect();
   document.getElementById('f_sapVendor').value='';
 }

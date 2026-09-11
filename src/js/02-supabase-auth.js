@@ -252,6 +252,16 @@ async function initApp(__fromLogin) {
     try{IDX_STORE=JSON.parse(localStorage.getItem('idx_v2'))||{};}catch(ex){IDX_STORE={};}
     anyFailed=true;
   }
+  try {
+    // RRLL_STORE (catálogo de conceptos + historial de paritarias PP/PJ) lo consume
+    // computeTestigoPct en cuanto un contrato en modo "sueldo testigo" corre una
+    // Actualización de Tarifas — necesita estar cargado desde el arranque, no recién
+    // cuando alguien visita la sección RRLL (a diferencia de Legales, que sí es lazy).
+    if (typeof window.RrllAdmin !== 'undefined') { await window.RrllAdmin.reload(); anyOk=true; }
+  } catch(e) {
+    console.warn('RRLL load error:', e);
+    anyFailed=true;
+  }
   idxMergeOfficialSeeds();
   localStorage.setItem('idx_v2', JSON.stringify(IDX_STORE));
   // Si al menos una tabla respondió, Supabase está alcanzable: los guardados posteriores
