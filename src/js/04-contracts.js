@@ -2301,15 +2301,16 @@ function computeAutoPctForIdx(idxLabel,fromYm,toYm){
 }
 // Único punto de integración del ajuste por sueldo testigo (ver
 // /root/.claude/plans/linked-twirling-pillow.md) con el motor de cálculo
-// polinómico existente: si el término es 'MANO DE OBRA (PP/PJ)' y el contrato
-// tiene moTestigo activado, el % sale de computeTestigoPct (07-polynomial.js)
-// para PP y PJ por separado, ponderado por la cantidad de personal de cada
-// uno EN ESE contrato. Para cualquier otro caso (incluidos contratos con
-// 'PP' en modo "% promedio" de siempre) delega, sin cambios, en
-// computeAutoPctForIdx — el resto del motor (computeTramoChain,
-// getCurrentMonthlyRate, guardarEnm, AVEs) no se toca.
+// polinómico existente: si el término es 'PP' (la etiqueta histórica que ya
+// usan los contratos existentes) o 'MANO DE OBRA (PP/PJ)' (la nueva, para
+// contratos que arrancan de cero) y el contrato tiene moTestigo activado, el
+// % sale de computeTestigoPct (07-polynomial.js) para PP y PJ por separado,
+// ponderado por la cantidad de personal de cada uno EN ESE contrato. Para
+// cualquier otro caso (incluidos contratos con 'PP' en modo "% promedio" de
+// siempre) delega, sin cambios, en computeAutoPctForIdx — el resto del motor
+// (computeTramoChain, getCurrentMonthlyRate, guardarEnm, AVEs) no se toca.
 function resolveTermPct(cc,idxLabel,fromYm,toYm){
-  if(idxLabel==='MANO DE OBRA (PP/PJ)'&&cc&&cc.moTestigo&&cc.moTestigo.enabled&&typeof computeTestigoPct==='function'){
+  if((idxLabel==='PP'||idxLabel==='MANO DE OBRA (PP/PJ)')&&cc&&cc.moTestigo&&cc.moTestigo.enabled&&typeof computeTestigoPct==='function'){
     const cantPP=Number(cc.moTestigo.cantPP)||0, cantPJ=Number(cc.moTestigo.cantPJ)||0;
     const totalCant=cantPP+cantPJ;
     if(!totalCant)return null;

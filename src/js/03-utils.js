@@ -264,8 +264,15 @@ function setPoly(a){if(!a)return;a.forEach((p,i)=>{if(i<5){document.getElementBy
 // (07-polynomial.js / 04-contracts.js). Ver plan en
 // /root/.claude/plans/linked-twirling-pillow.md.
 const MO_TESTIGO_CATEGORIAS=['A','B','C','D','E','F','G','H','I','J','K','L','M'];
+// 'PP' es la etiqueta histórica que ya usan los contratos existentes para
+// Petroleros Privados en su fórmula polinómica — el ajuste por sueldo
+// testigo tiene que poder activarse ahí también, no solo en la etiqueta
+// nueva 'MANO DE OBRA (PP/PJ)' (pensada para contratos que arrancan de cero
+// y quieren dejar explícito que cubre PP y PJ). Mismo criterio en
+// resolveTermPct (04-contracts.js).
+function _esLabelManoDeObra(v){ return v==='PP'||v==='MANO DE OBRA (PP/PJ)'; }
 function _moTestigoActivoEnForm(){
-  for(let i=1;i<=5;i++){const el=document.getElementById('p_i'+i);if(el&&el.value==='MANO DE OBRA (PP/PJ)')return true;}
+  for(let i=1;i<=5;i++){const el=document.getElementById('p_i'+i);if(el&&_esLabelManoDeObra(el.value))return true;}
   return false;
 }
 function _moConceptosMaestro(){
