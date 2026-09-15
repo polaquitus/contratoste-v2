@@ -1400,7 +1400,7 @@ function resolverTablaTestigo(tablaContrato, cambiosCct, hastaYm, _esBasal){
   });
 
   var rem=0, norem=0;
-  conceptos.forEach(function(co){ if(co.tipoLiq==='rem') rem+=monto[co.id]; else norem+=monto[co.id]; });
+  conceptos.forEach(function(co){ if(co.tipoLiq==='rem') rem+=monto[co.id]; else if(co.tipoLiq==='norem') norem+=monto[co.id]; });
   return {monto:monto, rem:rem, norem:norem, total:rem+norem};
 }
 

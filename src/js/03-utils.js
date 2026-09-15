@@ -278,6 +278,40 @@ function _moTestigoActivoEnForm(){
 function _moConceptosMaestro(){
   return (typeof RRLL_STORE!=='undefined'&&RRLL_STORE&&Array.isArray(RRLL_STORE.conceptos))?RRLL_STORE.conceptos:[];
 }
+// Total = Cantidad × Precio Unitario (Remunerativas/No Remunerativas) o %×Base (Retenciones)
+// — siempre calculado, nunca se tipea a mano. Si lo que cambió fue una fila Rem./No Rem.,
+// además recalcula la Base y el Total de todas las Retenciones de esa misma tabla (PP o PJ).
+// Nivel global (no dentro de renderMoTestigoSection): los oninput inline del HTML generado
+// corren en scope global, así que estas funciones tienen que vivir ahí también.
+function _motRecalcTotal(prefix,conceptoId){
+  const co=_moConceptosMaestro().find(x=>x.id===conceptoId);
+  const cantEl=document.getElementById(prefix+'_cant_'+conceptoId);
+  const precioEl=document.getElementById(prefix+'_precio_'+conceptoId);
+  const totalEl=document.getElementById(prefix+'_total_'+conceptoId);
+  if(!totalEl)return;
+  const cant=parseFloat(cantEl?.value)||0, precio=parseFloat(precioEl?.value)||0;
+  const esRetencion=co&&co.tipoLiq==='retencion';
+  const total=esRetencion?(cant/100*precio):(cant*precio);
+  totalEl.value=total.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(!esRetencion)_motRecalcRetenciones(prefix);
+}
+function _motRecalcRetenciones(prefix){
+  const todos=_moConceptosMaestro();
+  const sumaRem=todos.filter(co=>co.tipoLiq==='rem').reduce((s,co)=>{
+    const c=parseFloat(document.getElementById(prefix+'_cant_'+co.id)?.value)||0;
+    const p=parseFloat(document.getElementById(prefix+'_precio_'+co.id)?.value)||0;
+    return s+c*p;
+  },0);
+  todos.filter(co=>co.tipoLiq==='retencion').forEach(co=>{
+    const precioEl=document.getElementById(prefix+'_precio_'+co.id);
+    if(precioEl)precioEl.value=sumaRem.toFixed(2);
+    _motRecalcTotal(prefix,co.id);
+  });
+}
+function _motRecalcTablaCompleta(prefix){
+  _moConceptosMaestro().forEach(co=>{ if(co.tipoLiq!=='retencion')_motRecalcTotal(prefix,co.id); });
+  _motRecalcRetenciones(prefix);
+}
 function renderMoTestigoSection(force){
   const wrap=document.getElementById('moTestigoWrap');if(!wrap)return;
   const activo=_moTestigoActivoEnForm();
@@ -286,24 +320,44 @@ function renderMoTestigoSection(force){
   if(!force&&document.getElementById('mot_modo'))return; // ya construida — no perder lo tipeado
   const conceptos=_moConceptosMaestro();
   function tablaGrupoHtml(prefix,items){
-    let h='<table style="width:100%;font-size:11.5px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--g500)"><th>Concepto</th><th style="width:90px">Cantidad</th><th style="width:120px">Precio Unitario</th></tr></thead><tbody>';
+    let h='<table style="width:100%;font-size:11.5px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--g500)"><th>Concepto</th><th style="width:90px">Cantidad</th><th style="width:120px">Precio Unitario</th><th style="width:120px">Total</th></tr></thead><tbody>';
     items.forEach(co=>{
       h+='<tr style="border-top:1px solid var(--g100)"><td style="padding:3px 4px">'+co.nombre+
         '<input type="hidden" id="'+prefix+'_id_'+co.id+'" value="'+co.id+'"></td>'+
-        '<td><input type="number" step="0.01" id="'+prefix+'_cant_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td>'+
-        '<td><input type="number" step="0.01" id="'+prefix+'_precio_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px"></td></tr>';
+        '<td><input type="number" step="0.01" id="'+prefix+'_cant_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px" oninput="_motRecalcTotal(\''+prefix+'\',\''+co.id+'\')"></td>'+
+        '<td><input type="number" step="0.01" id="'+prefix+'_precio_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px" oninput="_motRecalcTotal(\''+prefix+'\',\''+co.id+'\')"></td>'+
+        '<td><input type="text" id="'+prefix+'_total_'+co.id+'" readonly disabled value="0" style="width:100%;font-size:11px;padding:2px 4px;background:var(--g50);color:var(--g700);font-weight:600;text-align:right"></td></tr>';
     });
-    if(!items.length)h+='<tr><td colspan="3" style="padding:6px;font-size:11px;color:var(--g500);font-style:italic">Sin conceptos.</td></tr>';
+    if(!items.length)h+='<tr><td colspan="4" style="padding:6px;font-size:11px;color:var(--g500);font-style:italic">Sin conceptos.</td></tr>';
+    h+='</tbody></table>';
+    return h;
+  }
+  // Retenciones: la "Cantidad" es un % (jubilación 11%, Ley 19032 3%, obra social 3%, etc.)
+  // y la "Base" NO se tipea — es siempre la suma de Sumas Remunerativas vigente, recalculada
+  // en vivo. Total = %/100 × Base. Todo de solo lectura salvo el %.
+  function tablaRetencionesHtml(prefix,items){
+    let h='<table style="width:100%;font-size:11.5px;border-collapse:collapse"><thead><tr style="text-align:left;color:var(--g500)"><th>Concepto</th><th style="width:70px">%</th><th style="width:120px">Base (auto)</th><th style="width:120px">Total</th></tr></thead><tbody>';
+    items.forEach(co=>{
+      h+='<tr style="border-top:1px solid var(--g100)"><td style="padding:3px 4px">'+co.nombre+
+        '<input type="hidden" id="'+prefix+'_id_'+co.id+'" value="'+co.id+'"></td>'+
+        '<td><input type="number" step="0.01" id="'+prefix+'_cant_'+co.id+'" style="width:100%;font-size:11px;padding:2px 4px" oninput="_motRecalcTotal(\''+prefix+'\',\''+co.id+'\')"></td>'+
+        '<td><input type="text" id="'+prefix+'_precio_'+co.id+'" readonly disabled value="0" style="width:100%;font-size:11px;padding:2px 4px;background:var(--g50);color:var(--g700);text-align:right"></td>'+
+        '<td><input type="text" id="'+prefix+'_total_'+co.id+'" readonly disabled value="0" style="width:100%;font-size:11px;padding:2px 4px;background:var(--g50);color:var(--g700);font-weight:600;text-align:right"></td></tr>';
+    });
+    if(!items.length)h+='<tr><td colspan="4" style="padding:6px;font-size:11px;color:var(--g500);font-style:italic">Sin conceptos.</td></tr>';
     h+='</tbody></table>';
     return h;
   }
   function tablaHtml(prefix,conCategoria){
-    const rem=conceptos.filter(co=>co.tipoLiq!=='norem');
+    const rem=conceptos.filter(co=>co.tipoLiq==='rem');
     const norem=conceptos.filter(co=>co.tipoLiq==='norem');
+    const retenciones=conceptos.filter(co=>co.tipoLiq==='retencion');
     return '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--g600);margin:8px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--g600)">💰 Sumas Remunerativas</div>'+
       tablaGrupoHtml(prefix,rem)+
       '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--p500);margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--p500)">🧾 Sumas No Remunerativas</div>'+
-      tablaGrupoHtml(prefix,norem);
+      tablaGrupoHtml(prefix,norem)+
+      '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--r500,#b3261e);margin:12px 0 4px;padding-bottom:3px;border-bottom:2px solid var(--r500,#b3261e)">🔻 Retenciones</div>'+
+      tablaRetencionesHtml(prefix,retenciones);
   }
   wrap.innerHTML=
     '<div class="fsec" style="margin-top:14px;border:1px solid var(--g200);border-radius:8px;padding:14px">'+
@@ -377,6 +431,8 @@ function setMoTestigo(m){
   }
   volcarTabla('mot_pp',m.tablaPP);
   volcarTabla('mot_pj',m.tablaPJ);
+  _motRecalcTablaCompleta('mot_pp');
+  _motRecalcTablaCompleta('mot_pj');
 }
 
 function onContrCh(){const v=gv('f_tcontr');document.getElementById('secRfq').classList.toggle('vis',v==='RFQ MAIL'||v==='RFQ ARIBA');document.getElementById('secAr').classList.toggle('vis',v==='RFQ ARIBA');}

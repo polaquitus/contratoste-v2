@@ -47,7 +47,10 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
       {id:'viandaDesayuno',    nombre:'Vianda Desay/Merienda',                   tipoLiq:'norem', modo:'escala_con_acuerdo'},
       {id:'asigViandaFija',    nombre:'Asignación Vianda Complementaria (Fijo)', tipoLiq:'norem', modo:'escala_con_acuerdo'},
       {id:'anrBase',           nombre:'ANR (Acuerdo No Remunerativo)',           tipoLiq:'norem', modo:'pct_subtotal_parcial', baseFijo:true, deConceptos:['basico','zona','turno','antiguedad','bonoPazSocial','adicYacimiento','adicDisponibilidad','horasExtras50','feriadoProm','desarraigo','horasViaje','presentismo','premioPuntualidad','viandaAlimentacion','viandaHsExtras','viandaDesayuno','asigViandaFija']},
-      {id:'asigVacaMuerta',    nombre:'Asignación Vaca Muerta',                  tipoLiq:'norem', modo:'suma_fija'}
+      {id:'asigVacaMuerta',    nombre:'Asignación Vaca Muerta',                  tipoLiq:'norem', modo:'suma_fija'},
+      {id:'retJubilacion',     nombre:'Jubilación (11%)',                        tipoLiq:'retencion', modo:'suma_fija'},
+      {id:'retLey19032',       nombre:'Ley 19032 - INSSJP (3%)',                 tipoLiq:'retencion', modo:'suma_fija'},
+      {id:'retObraSocial',     nombre:'Obra Social - Ley 23660 (3%)',            tipoLiq:'retencion', modo:'suma_fija'}
     ];
   }
 
@@ -186,10 +189,12 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
     var title=make('div','');title.style.fontWeight='800';title.style.fontSize='13px';title.style.marginBottom='10px';title.textContent='Catálogo de Conceptos ('+RRLL_STORE.conceptos.length+')';
     box.appendChild(title);
     var listWrap=make('div','');listWrap.style.maxHeight='520px';listWrap.style.overflow='auto';
-    var rem=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq!=='norem';});
+    var rem=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='rem';});
     var norem=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='norem';});
+    var retenciones=RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='retencion';});
     listWrap.appendChild(renderConceptoGrupo('💰 Sumas Remunerativas',rem,'var(--g600)'));
     listWrap.appendChild(renderConceptoGrupo('🧾 Sumas No Remunerativas',norem,'var(--p500)'));
+    listWrap.appendChild(renderConceptoGrupo('🔻 Retenciones',retenciones,'var(--r500)'));
     box.appendChild(listWrap);
     var addBtn=make('button','btn btn-p btn-sm','+ Agregar concepto');addBtn.type='button';addBtn.style.marginTop='10px';
     addBtn.addEventListener('click',function(){openConceptoForm(null);});
@@ -215,7 +220,7 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
         '<div><label style="font-size:10.5px;font-weight:600">ID (sin espacios)</label><input id="rc_id" '+(isNew?'':'disabled')+' value="'+esc(c.id)+'" style="width:100%;font-size:12px"></div>'+
         '<div><label style="font-size:10.5px;font-weight:600">Nombre</label><input id="rc_nombre" value="'+esc(c.nombre)+'" style="width:100%;font-size:12px"></div>'+
-        '<div><label style="font-size:10.5px;font-weight:600">Tipo</label><select id="rc_tipo" style="width:100%;font-size:12px"><option value="rem" '+(c.tipoLiq==='rem'?'selected':'')+'>Remunerativo</option><option value="norem" '+(c.tipoLiq==='norem'?'selected':'')+'>No Remunerativo</option></select></div>'+
+        '<div><label style="font-size:10.5px;font-weight:600">Tipo</label><select id="rc_tipo" style="width:100%;font-size:12px"><option value="rem" '+(c.tipoLiq==='rem'?'selected':'')+'>Remunerativo</option><option value="norem" '+(c.tipoLiq==='norem'?'selected':'')+'>No Remunerativo</option><option value="retencion" '+(c.tipoLiq==='retencion'?'selected':'')+'>Retención</option></select></div>'+
         '<div><label style="font-size:10.5px;font-weight:600">Modo de cálculo</label><select id="rc_modo" style="width:100%;font-size:12px">'+MODOS.map(function(m){return '<option value="'+m.id+'" '+(c.modo===m.id?'selected':'')+'>'+esc(m.label)+'</option>';}).join('')+'</select></div>'+
       '</div>'+
       '<div id="rc_extra" style="margin-bottom:8px"></div>'+
@@ -333,8 +338,9 @@ var RRLL_STORE = {version:1, conceptos:[], cambios:[]};
     var wrap=make('div','');wrap.style.border='1px dashed var(--p400)';wrap.style.borderRadius='8px';wrap.style.padding='10px';wrap.style.background='var(--p50)';
     function conceptoOpt(c){return '<option value="'+esc(c.id)+'">'+esc(c.nombre)+' ('+esc((modoDef(c.modo)||{}).label||c.modo)+')</option>';}
     var conceptoOpts='<option value="ACUERDO_GENERAL">Acuerdo General (mueve todos los conceptos en modo "Escala con acuerdo")</option>'+
-      '<optgroup label="💰 Sumas Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq!=='norem';}).map(conceptoOpt).join('')+'</optgroup>'+
-      '<optgroup label="🧾 Sumas No Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='norem';}).map(conceptoOpt).join('')+'</optgroup>';
+      '<optgroup label="💰 Sumas Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='rem';}).map(conceptoOpt).join('')+'</optgroup>'+
+      '<optgroup label="🧾 Sumas No Remunerativas">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='norem';}).map(conceptoOpt).join('')+'</optgroup>'+
+      '<optgroup label="🔻 Retenciones">'+RRLL_STORE.conceptos.filter(function(c){return c.tipoLiq==='retencion';}).map(conceptoOpt).join('')+'</optgroup>';
     wrap.innerHTML=
       '<div style="font-weight:700;font-size:12px;margin-bottom:8px">Nuevo cambio de paritaria</div>'+
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
